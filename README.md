@@ -15,6 +15,7 @@ A very simple, client-side-only CalDAV-compatible calendar UI built with React, 
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js (v18 or newer recommended)
 - npm
 
@@ -24,6 +25,7 @@ A very simple, client-side-only CalDAV-compatible calendar UI built with React, 
 npm install
 npm run dev
 ```
+
 Visit [http://localhost:8080](http://localhost:8080) in your browser.
 
 ### Production Build
@@ -32,6 +34,7 @@ Visit [http://localhost:8080](http://localhost:8080) in your browser.
 npm run build
 npm run preview
 ```
+
 Visit [http://localhost:8080](http://localhost:8080) in your browser.
 
 ### Docker
@@ -42,6 +45,7 @@ Build and run a production container using Caddy to serve the static files:
 docker build -t webcal .
 docker run -p 8080:80 webcal
 ```
+
 Visit [http://localhost:8080](http://localhost:8080) in your browser.
 
 ## Usage
@@ -53,11 +57,13 @@ Visit [http://localhost:8080](http://localhost:8080) in your browser.
 5. **Import/Export:** Use the sidebar buttons to save or load your calendar configuration.
 
 ## Security & Privacy
+
 - All operations are performed in your browser.
 - Credentials are stored in localStorage and only sent directly to your CalDAV server.
 - No data is sent to any third-party server.
 
 ## Limitations
+
 - No server-side component; all data is stored in the browser.
 - Only supports CalDAV servers that allow CORS requests from browsers.
 - No push notifications or background sync.

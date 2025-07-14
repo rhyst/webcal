@@ -4,15 +4,18 @@ import CalendarModal from "./CalendarModal.tsx";
 import Calendar from "./Calendar.tsx";
 import type { Calendar as ICalendar } from "./types.ts";
 
+interface CalendarModalState {
+  open: boolean;
+  isEdit: boolean;
+  calendar?: ICalendar;
+}
 
 function App() {
   const [calendars, setCalendars] = useState<ICalendar[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newUrl, setNewUrl] = useState("");
-  const [newUsername, setNewUsername] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
-  const [editDetails, setEditDetails] = useState<Partial<ICalendar>>({});
+  const [modal, setModal] = useState<CalendarModalState>({
+    open: false,
+    isEdit: false,
+  });
   const [loading, setLoading] = useState(false); // <-- add loading state here
 
   // Load calendars from localStorage on mount
@@ -26,96 +29,57 @@ function App() {
     localStorage.setItem("caldav_calendars", JSON.stringify(calendars));
   }, [calendars]);
 
-  const handleAddCalendar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUrl || !newUsername || !newPassword) return;
-    let displayName = "";
-    let color = "";
-
-    setCalendars([
-      ...calendars,
-      {
-        url: newUrl,
-        username: newUsername,
-        password: newPassword,
-        displayName: displayName || newUrl,
-        color: color || undefined,
-      },
-    ]);
-    setNewUrl("");
-    setNewUsername("");
-    setNewPassword("");
-    setShowAdd(false);
+  const handleRemove = (uid: string) => {
+    setCalendars(calendars.filter((cal) => cal.uid !== uid));
   };
 
-  const handleRemove = (idx: number) => {
-    setCalendars(calendars.filter((_, i) => i !== idx));
+  const handleEditCalendar = (uid: string) => {
+    const calendar = calendars.find((c) => c.uid === uid);
+    if (!calendar) {
+      return;
+    }
+    setModal({ open: true, isEdit: true, calendar }); // ensure a new object is set
   };
 
-  const handleEditCalendar = (idx: number) => {
-    setEditingIdx(idx);
-    setEditDetails({ ...calendars[idx] }); // ensure a new object is set
-  };
-  const handleEditCalendarChange = (
-    field: keyof ICalendar,
-    value: string | boolean,
-  ) => {
-    setEditDetails((prev) => ({ ...prev, [field]: value }));
-  };
-  const handleEditCalendarSave = () => {
-    if (editingIdx === null) return;
+  const handleSaveCalendar = (calendar: ICalendar) => {
     setCalendars((cals) =>
-      cals.map((c, i) => (i === editingIdx ? { ...c, ...editDetails } : c)),
+      cals.find((c) => c.uid === calendar.uid)
+        ? cals.map((c) => (c.uid === calendar.uid ? { ...c, ...calendar } : c))
+        : [...cals, calendar],
     );
-    setEditingIdx(null);
+    setModal({ open: false, isEdit: false });
   };
-  const handleEditCalendarCancel = () => {
-    setEditingIdx(null);
+
+  const handleClose = () => {
+    setModal({ open: false, isEdit: false });
   };
 
   return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        display: "flex",
-        position: "relative",
-      }}
-    >
+    <main className="h-screen w-screen flex">
       <Sidebar
         calendars={calendars}
-        onRemove={handleRemove}
-        showAdd={showAdd}
-        setShowAdd={setShowAdd}
-        newUrl={newUrl}
-        setNewUrl={setNewUrl}
-        newUsername={newUsername}
-        setNewUsername={setNewUsername}
-        newPassword={newPassword}
-        setNewPassword={setNewPassword}
-        handleAddCalendar={handleAddCalendar}
-        onEditCalendar={handleEditCalendar}
-        loading={loading} // <-- pass loading to Sidebar
-        onImportCalendars={(imported) => setCalendars(imported)}
+        loading={loading}
+        onClickRemove={handleRemove}
+        onClickAdd={() => setModal({ open: true, isEdit: false })}
+        onClickCalendar={handleEditCalendar}
+        onClickImport={(imported) => setCalendars(imported)}
       />
-      {editingIdx !== null && (
+      <Calendar
+        className="flex flex-1 h-screen"
+        calendars={calendars}
+        loading={loading}
+        setLoading={setLoading}
+      />
+      {modal.open && (
         <CalendarModal
-          key={editingIdx}
-          calendar={editDetails as ICalendar}
-          onChange={handleEditCalendarChange}
-          onSave={handleEditCalendarSave}
-          onCancel={handleEditCalendarCancel}
+          open={modal.open}
+          isEdit={modal.isEdit}
+          calendar={modal.calendar}
+          onSave={handleSaveCalendar}
+          onClose={handleClose}
         />
       )}
-      <main style={{ flex: 1, height: "100vh", position: "relative" }}>
-        <Calendar
-          calendars={calendars}
-          loading={loading}
-          setLoading={setLoading}
-        />{" "}
-        {/* pass loading and setLoading */}
-      </main>
-    </div>
+    </main>
   );
 }
 

@@ -1,26 +1,23 @@
 import type { DAVObject } from "tsdav";
 
 export interface Calendar {
+  uid: string;
   url: string;
   username: string;
   password: string;
-  displayName?: string;
-  color?: string;
-  enabled?: boolean;
+  name: string;
+  color: string;
+  enabled: boolean;
+  raw?: DAVObject;
 }
 
 // Define a type for calendar events
 export interface CalendarEvent {
-  id: string;
+  uid: string;
+  calendarUid: string;
   title: string;
-  start: string;
-  end?: string;
-  allDay?: boolean;
-  backgroundColor?: string;
-  borderColor?: string;
-  extendedProps: {
-    uid: string;
-    calendar: Calendar;
-    davObject: DAVObject;
-  };
+  startISO: string;
+  endISO: string;
+  allDay: boolean;
+  raw?: DAVObject;
 }

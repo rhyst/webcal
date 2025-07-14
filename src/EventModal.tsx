@@ -3,21 +3,19 @@ import { format, parseISO, isValid, parse, formatISO } from "date-fns";
 import Button from "./Button";
 import Text from "./Text";
 import Modal from "react-modal";
-import type { Calendar } from "./types";
-
+import type { Calendar, CalendarEvent } from "./types";
 
 interface EventModalProps {
   open: boolean;
   isEdit: boolean;
-  title?: string;
   start?: string;
   end?: string;
   allDay?: boolean;
-  calendar?: Calendar;
+  event?: CalendarEvent;
   calendars: Calendar[];
   onClose: () => void;
-  onSave: () => void;
-  onDelete: () => void;
+  onSave: (event: CalendarEvent) => void;
+  onDelete: (event: CalendarEvent) => void;
 }
 
 function formatInputDate(value: string, allDay: boolean): string {
@@ -51,18 +49,24 @@ function formatOutputDate(value: string, allDay: boolean): string {
 const EventModal: React.FC<EventModalProps> = ({
   open,
   isEdit,
-  calendar,
+  event,
   calendars,
   onClose,
   onSave,
   onDelete,
   ...details
 }) => {
-  const [title, setTitle] = useState(details.title || "");
+  const [title, setTitle] = useState(event?.title || "");
   const [allDay, setAllDay] = useState(details.allDay || false);
-  const [start, setStart] = useState(details.start || formatISO(new Date()));
-  const [end, setEnd] = useState(details.end || formatISO(new Date()));
-  const [calendarIdx, setCalendarIdx] = useState(calendars.findIndex(cal => cal.url === calendar?.url));
+  const [start, setStart] = useState(
+    details.start ? formatISO(parseISO(details.start)) : formatISO(new Date()),
+  );
+  const [end, setEnd] = useState(
+    details.end ? formatISO(parseISO(details.end)) : formatISO(new Date()),
+  );
+  const [calendar, setCalendar] = useState(
+    calendars.find((c) => c.uid === event?.calendarUid) || calendars[0],
+  );
 
   const handleStartChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setStart(formatOutputDate(event.target.value, allDay));
@@ -70,6 +74,19 @@ const EventModal: React.FC<EventModalProps> = ({
 
   const handleEndChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEnd(formatOutputDate(event.target.value, allDay));
+  };
+
+  const handleSave = () => {
+    const data: CalendarEvent = {
+      ...event,
+      uid: event?.uid || Math.random().toString(36).slice(2) + Date.now(),
+      title,
+      startISO: start,
+      endISO: end,
+      allDay,
+      calendarUid: calendar.uid,
+    };
+    onSave(data);
   };
 
   return (
@@ -141,24 +158,30 @@ const EventModal: React.FC<EventModalProps> = ({
         </Text>
         <select
           disabled={isEdit}
-          value={calendarIdx}
-          onChange={(e) => setCalendarIdx(Number(e.target.value))}
+          value={calendar.uid}
+          onChange={(e) =>
+            setCalendar(calendars.find((c) => c.uid === e.target.value)!)
+          }
           className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         >
-          {calendars.map((cal, i) => (
-            <option key={i} value={i}>
-              {cal.displayName || `Calendar ${i + 1}`}
+          {calendars.map((cal) => (
+            <option key={cal.uid} value={cal.uid}>
+              {cal.name}
             </option>
           ))}
         </select>
       </div>
       <div className="mt-2 flex gap-2 justify-end">
-        {isEdit ? (
-          <Button type="button" onClick={onDelete} variant="danger">
+        {isEdit && event ? (
+          <Button
+            type="button"
+            onClick={() => onDelete(event)}
+            variant="danger"
+          >
             Delete
           </Button>
         ) : null}
-        <Button type="submit" variant="primary" onClick={onSave}>
+        <Button type="submit" variant="primary" onClick={handleSave}>
           Save
         </Button>
         <Button type="button" onClick={onClose} variant="secondary">

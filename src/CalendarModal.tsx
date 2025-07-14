@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import Button from "./Button";
 import Text from "./Text";
 import Modal from "react-modal";
+import type { Calendar } from "./types";
 
-const GOOGLE_COLORS = [
+const COLORS = [
   "#4285F4", // Blue
   "#34A853", // Green
   "#EA4335", // Red
@@ -18,32 +19,45 @@ const GOOGLE_COLORS = [
   "#7CB342", // Light Green
 ];
 
-interface CalDAVCalendar {
-  url: string;
-  username: string;
-  password: string;
-  displayName?: string;
-  color?: string;
-  enabled?: boolean;
-}
-
 interface EditCalendarModalProps {
-  calendar: CalDAVCalendar;
-  onChange: (field: keyof CalDAVCalendar, value: string | boolean) => void;
-  onSave: () => void;
-  onCancel: () => void;
+  open: boolean;
+  isEdit: boolean;
+  calendar?: Calendar;
+  onSave: (calendar: Calendar) => void;
+  onClose: () => void;
 }
 
 const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
+  open,
+  isEdit,
   calendar,
-  onChange,
   onSave,
-  onCancel,
+  onClose,
 }) => {
+  const [name, setName] = useState(calendar?.name || "");
+  const [color, setColor] = useState(calendar?.color || COLORS[0]);
+  const [url, setUrl] = useState(calendar?.url || "");
+  const [username, setUserName] = useState(calendar?.username || "");
+  const [password, setPassword] = useState(calendar?.password || "");
+  const [enabled, setEnabled] = useState<boolean>(calendar?.enabled || true);
+
+  const handleSave = () => {
+    onSave({
+      ...calendar,
+      uid: calendar?.uid || Math.random().toString(36).slice(2) + Date.now(),
+      name,
+      color,
+      url,
+      username,
+      password,
+      enabled,
+    });
+  };
+
   return (
     <Modal
-      isOpen={true}
-      onRequestClose={onCancel}
+      isOpen={open}
+      onRequestClose={onClose}
       overlayClassName="fixed inset-0 bg-black/35 z-50 flex items-center justify-center"
       className="bg-white text-[#222] p-8 rounded-xl min-w-[340px] shadow-xl border border-[#e0e0e0] flex flex-col gap-3 outline-none"
       ariaHideApp={false}
@@ -55,16 +69,16 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
         color="blue"
         className="m-0 mb-2"
       >
-        Edit Calendar
+        {isEdit ? "Edit" : "Create"} Calendar
       </Text>
       <div>
         <Text as="label" size="sm" weight="medium" color="gray">
-          Display Name:
+          Name:
         </Text>
         <input
           type="text"
-          value={calendar.displayName || ""}
-          onChange={(e) => onChange("displayName", e.target.value)}
+          value={name || ""}
+          onChange={(e) => setName(e.target.value)}
           className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         />
       </div>
@@ -73,24 +87,24 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
           Color:
         </Text>
         <div className="flex gap-2 mb-2 flex-wrap">
-          {GOOGLE_COLORS.map((color) => (
+          {COLORS.map((c) => (
             <button
-              key={color}
+              key={c}
               type="button"
-              className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition ${calendar.color === color ? "border-blue-700 ring-2 ring-blue-200" : "border-[#eee]"}`}
-              style={{ background: color }}
-              aria-label={color}
-              onClick={() => onChange("color", color)}
+              className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition ${color === c ? "border-blue-700 ring-2 ring-blue-200" : "border-[#eee]"}`}
+              style={{ background: c }}
+              aria-label={c}
+              onClick={() => setColor(c)}
             >
-              {calendar.color === color && (
+              {color === c && (
                 <span className="w-3 h-3 bg-white rounded-full block" />
               )}
             </button>
           ))}
           <input
             type="color"
-            value={calendar.color || "#4285F4"}
-            onChange={(e) => onChange("color", e.target.value)}
+            value={color || "#4285F4"}
+            onChange={(e) => setColor(e.target.value)}
             className="w-7 h-7 p-0 border-none bg-transparent cursor-pointer"
             style={{ background: "none" }}
             aria-label="Custom color"
@@ -103,9 +117,10 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
         </Text>
         <input
           type="text"
-          value={calendar.url}
-          readOnly
-          className="w-full p-1.5 rounded border border-[#ccc] text-[#888] bg-[#f3f3f3] cursor-not-allowed"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          disabled={isEdit}
+          className="w-full p-1.5 rounded border border-[#ccc] text-[#888] disabled:bg-[#f3f3f3] disabled:cursor-not-allowed"
         />
       </div>
       <div>
@@ -114,8 +129,8 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
         </Text>
         <input
           type="text"
-          value={calendar.username}
-          onChange={(e) => onChange("username", e.target.value)}
+          value={username}
+          onChange={(e) => setUserName(e.target.value)}
           className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         />
       </div>
@@ -125,8 +140,8 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
         </Text>
         <input
           type="password"
-          value={calendar.password}
-          onChange={(e) => onChange("password", e.target.value)}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         />
       </div>
@@ -134,18 +149,18 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
         <Text as="label" size="sm" weight="medium" color="gray">
           <input
             type="checkbox"
-            checked={calendar.enabled !== false}
-            onChange={e => onChange("enabled", e.target.checked)}
+            checked={enabled !== false}
+            onChange={(e) => setEnabled(e.target.checked)}
             className="mr-1.5"
           />
           Enabled
         </Text>
       </div>
       <div className="mt-2 flex gap-2 justify-end">
-        <Button type="submit" variant="primary" onClick={onSave}>
+        <Button type="submit" variant="primary" onClick={handleSave}>
           Save
         </Button>
-        <Button type="button" onClick={onCancel} variant="secondary">
+        <Button type="button" onClick={onClose} variant="secondary">
           Cancel
         </Button>
       </div>

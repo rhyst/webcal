@@ -21,42 +21,22 @@ import ICAL from "ical.js";
 import EventModal from "./EventModal";
 import type { Calendar as ICalendar, CalendarEvent } from "./types";
 
-
 interface CalendarProps {
+  className?: string;
   calendars: ICalendar[];
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const CALENDAR_COLORS = [
-  "#1976d2",
-  "#388e3c",
-  "#d32f2f",
-  "#fbc02d",
-  "#7b1fa2",
-  "#0288d1",
-  "#c2185b",
-  "#ffa000",
-  "#455a64",
-  "#388e3c",
-];
-
 interface EventModalState {
   open: boolean;
   isEdit: boolean;
-  calendar?: ICalendar;
-  event?: CalendarEvent;
-  start?: string; // ISO
-  end?: string; // ISO
+  startISO?: string;
+  endISO?: string;
   allDay?: boolean;
+  event?: CalendarEvent;
 }
 
-// Utility function to check if all required EventModalState fields are set
-function isValidEvent(modal: EventModalState): modal is Required<EventModalState> {
-  if (!modal.start || !modal.end || !modal.event || !modal.calendar || modal.allDay === undefined) return false; return true;
-}
-
-// Utility to fetch all events for the given calendars and date range
 async function fetchAllEvents({
   calendars,
   dateRange,
@@ -75,22 +55,15 @@ async function fetchAllEvents({
   setError(null);
   try {
     const allEvents: CalendarEvent[] = [];
-    for (const [i, cal] of calendars.entries()) {
-      const color = cal.color || CALENDAR_COLORS[i % CALENDAR_COLORS.length];
+    for (const cal of calendars) {
       const auth = getBasicAuthHeaders({
         username: cal.username,
         password: cal.password,
       });
-      fetch("/").then(r => console.log("fetch works", r));
-
       const objects: DAVObject[] = await fetchCalendarObjects({
         calendar: { url: cal.url },
         timeRange: { start: dateRange.start, end: dateRange.end },
         headers: auth,
-        fetchOptions: {
-          window: null
-        }
-
       });
       const fcEvents = objects.flatMap((obj) => {
         let events: CalendarEvent[] = [];
@@ -100,24 +73,23 @@ async function fetchAllEvents({
           for (const vevent of vevents) {
             const ICALEvent = new ICAL.Event(vevent);
             events.push({
-              id: obj.url + (ICALEvent.uid ? ":" + ICALEvent.uid : ""),
+              uid: ICALEvent.uid,
               title: ICALEvent.summary || "No Title",
-              start: ICALEvent.startDate.toString(),
-              end: ICALEvent.endDate.toString(),
+              startISO: ICALEvent.startDate.toString(),
+              endISO: ICALEvent.endDate.toString(),
               allDay: ICALEvent.startDate ? ICALEvent.startDate.isDate : false,
-              backgroundColor: color,
-              borderColor: color,
-              extendedProps: { uid: ICALEvent.uid, calendar: cal, davObject: obj },
+              calendarUid: cal.uid,
+              raw: obj,
             });
           }
-        } catch (e) { }
+        } catch (e) {}
         return events;
       });
       allEvents.push(...fcEvents);
     }
     setEvents(allEvents);
   } catch (e: any) {
-    console.log(e)
+    console.log(e);
     setError(e.message || "Failed to fetch events");
   } finally {
     if (setLoading) setLoading(false);
@@ -125,6 +97,7 @@ async function fetchAllEvents({
 }
 
 const Calendar: React.FC<CalendarProps> = ({
+  className,
   calendars,
   setLoading,
 }) => {
@@ -140,8 +113,14 @@ const Calendar: React.FC<CalendarProps> = ({
   } | null>(null);
 
   useEffect(() => {
-    const enabledCalendars = calendars.filter(cal => cal.enabled !== false);
-    fetchAllEvents({ calendars: enabledCalendars, dateRange, setEvents, setError, setLoading });
+    const enabledCalendars = calendars.filter((cal) => cal.enabled !== false);
+    fetchAllEvents({
+      calendars: enabledCalendars,
+      dateRange,
+      setEvents,
+      setError,
+      setLoading,
+    });
   }, [calendars, dateRange, setLoading]);
 
   // Handlers for FullCalendar
@@ -149,24 +128,24 @@ const Calendar: React.FC<CalendarProps> = ({
     setModal({
       open: true,
       isEdit: false,
-      start: arg.startStr,
-      end: arg.endStr,
+      startISO: arg.startStr,
+      endISO: arg.endStr,
       allDay: true,
     });
   };
 
   const handleEventClick = (arg: EventClickArg) => {
-    const event = events.find(e => e.extendedProps.uid === arg.event.extendedProps.uid);
+    const event = events.find((e) => e.uid === arg.event.extendedProps.uid);
     if (!event) {
-      return
+      return;
     }
     setModal({
       open: true,
       isEdit: true,
       event,
-      start: event.start,
-      end: event.end,
-      calendar: event.extendedProps.calendar
+      startISO: event.startISO,
+      endISO: event.endISO,
+      allDay: event.allDay,
     });
   };
 
@@ -178,81 +157,60 @@ const Calendar: React.FC<CalendarProps> = ({
     setModal({ open: false, isEdit: false });
   };
 
-  const handleModalDelete = () => {
-    if (!isValidEvent(modal)) {
-      return;
-    }
-    const auth = getBasicAuthHeaders({
-      username: modal.calendar.username,
-      password: modal.calendar.password,
-    });
-    deleteCalendarObject({
-      calendarObject: modal.event.extendedProps.davObject,
-      headers: auth,
-    });
-    setModal({ open: false, isEdit: false });
-    // Refetch events
-    if (dateRange) {
-      fetchAllEvents({ calendars, dateRange, setEvents, setError });
-    }
-  };
-
-  const handleModalSave = async () => {
+  const handleEventSave = async (event: CalendarEvent) => {
     setLoading(true);
     setError(null);
-    if (!isValidEvent(modal)) {
-      return;
-    }
     try {
-
+      const calendar = calendars.find((c) => c.uid === event.calendarUid);
+      if (!calendar) {
+        return;
+      }
       // Build VEVENT using ical.js
-      const uid =
-        modal.isEdit && modal.event.extendedProps.uid
-          ? modal.event.extendedProps.uid
-          : Math.random().toString(36).slice(2) + Date.now();
+      const uid = event.uid;
       // Create VCALENDAR component
       const vcal = new ICAL.Component(["vcalendar", [], []]);
       vcal.addPropertyWithValue("version", "2.0");
       // Create VEVENT component
       const veventComp = new ICAL.Component("vevent");
-      const event = new ICAL.Event(veventComp);
-      event.uid = uid;
-      event.summary = modal.event?.title || "";
       veventComp.addPropertyWithValue(
         "dtstamp",
         ICAL.Time.fromJSDate(new Date()),
       );
       veventComp.addPropertyWithValue("prodid", "webcal");
-      const start = ICAL.Time.fromDateTimeString(modal.start);
-      const end = ICAL.Time.fromDateTimeString(modal.end);
-      event.startDate = start;
-      event.endDate = end;
+      // Create ICALEvent
+      const ICALEvent = new ICAL.Event(veventComp);
+      ICALEvent.uid = uid;
+      ICALEvent.summary = event?.title || "";
+      ICALEvent.startDate = ICAL.Time.fromDateTimeString(event.startISO);
+      ICALEvent.endDate = ICAL.Time.fromDateTimeString(event.endISO);
       if (modal.allDay) {
-        start.isDate = true;
-        end.isDate = true;
+        ICALEvent.startDate.isDate = true;
+        ICALEvent.endDate.isDate = true;
       }
       vcal.addSubcomponent(veventComp);
+      const iCalString = vcal.toString();
       const auth = getBasicAuthHeaders({
-        username: modal.calendar?.username,
-        password: modal.calendar?.password,
+        username: calendar.username,
+        password: calendar.password,
       });
-      const ical = vcal.toString();
       if (modal.isEdit && modal.event) {
         // Update existing event
-        const url = modal.event.id.split(":")[0];
+        if (!event.raw) {
+          return;
+        }
         await updateCalendarObject({
           calendarObject: {
-            data: ical,
-            url,
+            data: iCalString,
+            url: event.raw.url,
           },
           headers: auth,
         });
       } else {
         // Create new event
         await createCalendarObject({
-          calendar: modal.calendar,
+          calendar: calendar,
           filename: event.uid + ".ics",
-          iCalString: ical,
+          iCalString: iCalString,
           headers: auth,
         });
       }
@@ -268,19 +226,64 @@ const Calendar: React.FC<CalendarProps> = ({
     }
   };
 
+  const handleEventDelete = (event: CalendarEvent) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const calendar = calendars.find((c) => c.uid === event.calendarUid);
+      if (!calendar || !event.raw) {
+        return;
+      }
+      const auth = getBasicAuthHeaders({
+        username: calendar.username,
+        password: calendar.password,
+      });
+      deleteCalendarObject({
+        calendarObject: event.raw,
+        headers: auth,
+      });
+      setModal({ open: false, isEdit: false });
+      // Refetch events
+      if (dateRange) {
+        fetchAllEvents({ calendars, dateRange, setEvents, setError });
+      }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="w-full h-full m-0 p-0 bg-white z-0 relative">
-      {error && <p className="text-red-600 p-4">{error}</p>}
-      <div className="h-full">
+    <div className={`w-full h-full m-0 p-0 bg-white ${className}`}>
+      {error && <p className="fixed text-red-600 p-4">{error}</p>}
+      <div className="h-full w-full">
         <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+          plugins={[
+            dayGridPlugin,
+            timeGridPlugin,
+            listPlugin,
+            interactionPlugin,
+          ]}
           initialView="dayGridMonth"
           headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
           }}
-          events={events}
+          events={events.map((event) => {
+            const calendar = calendars.find((c) => c.uid === event.calendarUid);
+            return {
+              title: event.title,
+              start: event.startISO,
+              end: event.endISO,
+              backgroundColor: calendar?.color,
+              borderColor: calendar?.color,
+              extendedProps: {
+                uid: event.uid,
+              },
+            };
+          })}
           editable={true}
           selectable={true}
           height="100%"
@@ -293,15 +296,14 @@ const Calendar: React.FC<CalendarProps> = ({
         <EventModal
           open={modal.open}
           isEdit={modal.isEdit}
-          title={modal.event?.title}
-          start={modal.start}
-          end={modal.end}
+          start={modal.startISO}
+          end={modal.endISO}
           allDay={modal.allDay}
-          calendar={modal.calendar}
           calendars={calendars}
+          event={modal.event}
           onClose={handleModalClose}
-          onSave={handleModalSave}
-          onDelete={handleModalDelete}
+          onSave={handleEventSave}
+          onDelete={handleEventDelete}
         />
       )}
     </div>
