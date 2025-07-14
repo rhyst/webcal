@@ -1,0 +1,27 @@
+# Node modules and lock files
+node_modules
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+
+# Vite/React build output
+dist
+
+# Local env files
+.env
+.env.*
+
+# Editor and OS files
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Test and coverage
+coverage
+*.test.*
+__tests__
+
+# Misc
+*.swp
+*.swo 

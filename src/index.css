@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.fc .fc-toolbar.fc-header-toolbar {
+  padding: 6px;
+  margin-bottom: 0;
+}
+
+.fc .fc-scrollgrid {
+  border-left-width: 0;
+}
+
+/* FullCalendar text consistency */
+.fc,
+.fc .fc-event-title,
+.fc .fc-toolbar-title,
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  @apply font-sans text-gray-700 font-normal;
+}
+.fc .fc-toolbar-title {
+  @apply font-semibold text-blue-700 text-xl;
+}
+
+/* FullCalendar button consistency */
+.fc .fc-button,
+.fc .fc-button-primary {
+  @apply bg-blue-700 text-white font-medium rounded transition border-none shadow-none;
+}
+.fc .fc-button:hover,
+.fc .fc-button-primary:hover {
+  @apply bg-blue-800;
+}
+.fc .fc-button:focus,
+.fc .fc-button-primary:focus {
+  @apply ring-2 ring-blue-300 outline-none;
+}
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-height: 100vh;
+}
