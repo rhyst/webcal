@@ -6,6 +6,7 @@ import type { Calendar } from "./types";
 import Input from "./Input";
 import Checkbox from "./Checkbox";
 import Radio from "./Radio";
+import { useCalendarStore } from "./stores/calendarStore";
 
 const COLORS = [
   "#4285F4", // Blue
@@ -26,7 +27,6 @@ interface EditCalendarModalProps {
   open: boolean;
   isEdit: boolean;
   calendar?: Calendar;
-  onSave: (calendar: Calendar) => void;
   onClose: () => void;
 }
 
@@ -34,7 +34,6 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
   open,
   isEdit,
   calendar,
-  onSave,
   onClose,
 }) => {
   const [name, setName] = useState(calendar?.name || "");
@@ -50,8 +49,10 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
     calendar?.useProxy || false,
   );
 
+  const { addCalendar, updateCalendar } = useCalendarStore();
+
   const handleSave = () => {
-    onSave({
+    const cal: Calendar = {
       ...calendar,
       uid: calendar?.uid || Math.random().toString(36).slice(2) + Date.now(),
       name,
@@ -62,7 +63,13 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
       enabled,
       type,
       useProxy,
-    });
+    };
+    if (isEdit) {
+      updateCalendar(cal);
+    } else {
+      addCalendar(cal);
+    }
+    onClose();
   };
 
   return (
@@ -203,7 +210,7 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
         />
       </div>
       <div className="mt-2 flex gap-2 justify-end">
-        <Button type="submit" variant="primary" onClick={handleSave}>
+        <Button type="button" variant="primary" onClick={handleSave}>
           Save
         </Button>
         <Button type="button" onClick={onClose} variant="secondary">

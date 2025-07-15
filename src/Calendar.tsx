@@ -5,30 +5,18 @@ import interactionPlugin from "@fullcalendar/interaction";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import iCalendarPlugin from "@fullcalendar/icalendar";
-import {
-  createCalendarObject,
-  deleteCalendarObject,
-  fetchCalendarObjects,
-  getBasicAuthHeaders,
-  updateCalendarObject,
-} from "tsdav";
-import type { DAVObject } from "tsdav";
 import type {
   DateSelectArg,
   EventClickArg,
   DatesSetArg,
 } from "@fullcalendar/core";
-import ICAL from "ical.js.2";
 import EventModal from "./EventModal";
-import type { Calendar as ICalendar, CalendarEvent } from "./types";
-import { proxyUrl, unmangleProxiedUrl } from "./utils";
-import { RRule } from "rrule";
+import type { CalendarEvent } from "./types";
+import { useCalendarStore } from "./stores/calendarStore";
+import { proxyUrl } from "./utils";
 
 interface CalendarProps {
   className?: string;
-  calendars: ICalendar[];
-  loading: boolean;
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 interface EventModalState {
@@ -40,127 +28,23 @@ interface EventModalState {
   event?: CalendarEvent;
 }
 
-async function fetchEvents({
-  calendars,
-  dateRange,
-  setEvents,
-  setError,
-  setLoading,
-}: {
-  calendars: ICalendar[];
-  dateRange: { start: string; end: string } | null;
-  setEvents: (events: CalendarEvent[]) => void;
-  setError: (err: string | null) => void;
-  setLoading?: (loading: boolean) => void;
-}) {
-  if (!dateRange) return;
-  if (setLoading) setLoading(true);
-  setError(null);
-  try {
-    const events: CalendarEvent[] = [];
-    for (const cal of calendars) {
-      const url = cal.useProxy ? proxyUrl(cal.url) : cal.url;
-      const auth = getBasicAuthHeaders({
-        username: cal.username,
-        password: cal.password,
-      });
-      const objects: DAVObject[] = await fetchCalendarObjects({
-        calendar: { url },
-        timeRange: { start: dateRange.start, end: dateRange.end },
-        headers: auth,
-      });
-      objects.forEach((obj) => {
-        try {
-          let vcalendar = new ICAL.Component(ICAL.parse(obj.data));
-          let vevent = vcalendar.getFirstSubcomponent("vevent");
-          if (!vevent) {
-            return;
-          }
-          let recur = vevent.getFirstPropertyValue("rrule") as
-            | ICAL.Recur
-            | undefined;
-          if (!recur) {
-            const icalEvent = new ICAL.Event(vevent);
-            events.push({
-              uid: icalEvent.uid,
-              title: icalEvent.summary || "No Title",
-              startISO: icalEvent.startDate.toString(),
-              endISO: icalEvent.endDate.toString(),
-              allDay: icalEvent.startDate ? icalEvent.startDate.isDate : false,
-              calendarUid: cal.uid,
-              raw: {
-                ...obj,
-                url: cal.useProxy
-                  ? unmangleProxiedUrl(cal.url, obj.url)
-                  : obj.url,
-              },
-            });
-            return;
-          }
-          const rangeStart = ICAL.Time.fromDateTimeString(dateRange.start);
-          const rangeEnd = ICAL.Time.fromDateTimeString(dateRange.end);
-          let dtstart = vevent.getFirstPropertyValue("dtstart");
-          if (!dtstart) {
-            return;
-          }
-          let iterator = recur.iterator(dtstart as ICAL.Time);
-          // Iterate through the start dates in the range.
-          for (
-            let next = iterator.next();
-            next && next.compare(rangeEnd) < 0;
-            next = iterator.next()
-          ) {
-            const icalEvent = new ICAL.Event(vevent);
-            const occurence = icalEvent.getOccurrenceDetails(next);
-            if (occurence.endDate.compare(rangeStart) >= 0) {
-              events.push({
-                uid: icalEvent.uid,
-                title: icalEvent.summary || "No Title",
-                startISO: occurence.startDate.toString(),
-                endISO: occurence.endDate.toString(),
-                allDay: icalEvent.startDate
-                  ? icalEvent.startDate.isDate
-                  : false,
-                calendarUid: cal.uid,
-                rrule: recur.toString(),
-                raw: {
-                  ...obj,
-                  url: cal.useProxy
-                    ? unmangleProxiedUrl(cal.url, obj.url)
-                    : obj.url,
-                },
-              });
-            }
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      });
-    }
-    setEvents(events);
-  } catch (e: any) {
-    console.log(e);
-    setError(e.message || "Failed to fetch events");
-  } finally {
-    if (setLoading) setLoading(false);
-  }
-}
-
-const Calendar: React.FC<CalendarProps> = ({
-  className,
-  calendars,
-  setLoading,
-}) => {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [error, setError] = useState<string | null>(null);
+const Calendar: React.FC<CalendarProps> = ({ className }) => {
   const [modal, setModal] = useState<EventModalState>({
     open: false,
     isEdit: false,
   });
-  const [dateRange, setDateRange] = useState<{
-    start: string;
-    end: string;
-  } | null>(null);
+
+  // Get store state and actions
+  const {
+    calendars,
+    events,
+    error,
+    dateRange,
+    setDateRange,
+    fetchEvents,
+    saveEvent,
+    deleteEvent,
+  } = useCalendarStore();
 
   useEffect(() => {
     const enabledCalendars = calendars.filter((cal) => cal.enabled !== false);
@@ -168,14 +52,11 @@ const Calendar: React.FC<CalendarProps> = ({
     const caldavCalendars = enabledCalendars.filter(
       (cal) => !cal.type || cal.type === "caldav",
     );
-    fetchEvents({
-      calendars: caldavCalendars,
-      dateRange,
-      setEvents,
-      setError,
-      setLoading,
-    });
-  }, [calendars, dateRange, setLoading]);
+
+    if (caldavCalendars.length > 0 && dateRange) {
+      fetchEvents();
+    }
+  }, [calendars, dateRange, fetchEvents]);
 
   // Handlers for FullCalendar
   const handleDateClick = (arg: DateSelectArg) => {
@@ -212,111 +93,22 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   const handleEventSave = async (event: CalendarEvent) => {
-    setLoading(true);
-    setError(null);
     try {
-      const calendar = calendars.find((c) => c.uid === event.calendarUid);
-      if (!calendar) {
-        return;
-      }
-      // Build VEVENT using ical.js
-      const uid = event.uid;
-      // Create VCALENDAR component
-      const vcal = new ICAL.Component(["vcalendar", [], []]);
-      vcal.addPropertyWithValue("version", "2.0");
-      // Create VEVENT component
-      const veventComp = new ICAL.Component("vevent");
-      veventComp.addPropertyWithValue(
-        "dtstamp",
-        ICAL.Time.fromJSDate(new Date()),
-      );
-      veventComp.addPropertyWithValue("prodid", "webcal");
-      // Create ICALEvent
-      const ICALEvent = new ICAL.Event(veventComp);
-      ICALEvent.uid = uid;
-      ICALEvent.summary = event?.title || "";
-      ICALEvent.startDate = ICAL.Time.fromDateTimeString(event.startISO);
-      ICALEvent.endDate = ICAL.Time.fromDateTimeString(event.endISO);
-      if (modal.allDay) {
-        ICALEvent.startDate.isDate = true;
-        ICALEvent.endDate.isDate = true;
-      }
-      if (event.rrule) {
-        veventComp.addPropertyWithValue(
-          "rrule",
-          ICAL.Recur.fromString(event.rrule.split("RRULE:")[1]),
-        );
-      }
-      vcal.addSubcomponent(veventComp);
-      const iCalString = vcal.toString();
-      const auth = getBasicAuthHeaders({
-        username: calendar.username,
-        password: calendar.password,
-      });
-      if (modal.isEdit && modal.event) {
-        // Update existing event
-        if (!event.raw) {
-          return;
-        }
-        await updateCalendarObject({
-          calendarObject: {
-            data: iCalString,
-            url: calendar.useProxy ? proxyUrl(event.raw.url) : event.raw.url,
-          },
-          headers: auth,
-        });
-      } else {
-        // Create new event
-        await createCalendarObject({
-          calendar: {
-            ...calendar,
-            url: calendar.useProxy ? proxyUrl(calendar.url) : calendar.url,
-          },
-          filename: event.uid + ".ics",
-          iCalString: iCalString,
-          headers: auth,
-        });
-      }
+      await saveEvent(event, modal.isEdit, modal.event);
       setModal({ open: false, isEdit: false });
-      // Refetch events
-      if (dateRange) {
-        await fetchEvents({ calendars, dateRange, setEvents, setError });
-      }
-    } catch (e: any) {
-      setError(e.message || "Failed to save event");
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      // Error is handled in the store
+      console.error("Failed to save event:", e);
     }
   };
 
-  const handleEventDelete = (event: CalendarEvent) => {
-    setLoading(true);
-    setError(null);
+  const handleEventDelete = async (event: CalendarEvent) => {
     try {
-      const calendar = calendars.find((c) => c.uid === event.calendarUid);
-      if (!calendar || !event.raw) {
-        return;
-      }
-      const auth = getBasicAuthHeaders({
-        username: calendar.username,
-        password: calendar.password,
-      });
-      deleteCalendarObject({
-        calendarObject: {
-          ...event.raw,
-          url: calendar.useProxy ? proxyUrl(event.raw.url) : event.raw.url,
-        },
-        headers: auth,
-      });
+      await deleteEvent(event);
       setModal({ open: false, isEdit: false });
-      // Refetch events
-      if (dateRange) {
-        fetchEvents({ calendars, dateRange, setEvents, setError });
-      }
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      // Error is handled in the store
+      console.error("Failed to delete event:", e);
     }
   };
 

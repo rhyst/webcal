@@ -3,6 +3,7 @@ import Sidebar from "./Sidebar";
 import CalendarModal from "./CalendarModal.tsx";
 import Calendar from "./Calendar.tsx";
 import type { Calendar as ICalendar } from "./types.ts";
+import { useCalendarStore } from "./stores/calendarStore";
 
 interface CalendarModalState {
   open: boolean;
@@ -11,12 +12,10 @@ interface CalendarModalState {
 }
 
 function App() {
-  const [calendars, setCalendars] = useState<ICalendar[]>([]);
   const [modal, setModal] = useState<CalendarModalState>({
     open: false,
     isEdit: false,
   });
-  const [loading, setLoading] = useState(false); // <-- add loading state here
   const [darkMode, setDarkMode] = useState(() => {
     // Check localStorage or system preference
     const stored = localStorage.getItem("dark_mode");
@@ -27,6 +26,15 @@ function App() {
     const stored = localStorage.getItem("sidebar_width");
     return stored ? parseInt(stored, 10) : 320;
   });
+
+  // Get store actions and state
+  const {
+    calendars,
+    loading,
+    loadFromStorage,
+    removeCalendar,
+    importCalendars,
+  } = useCalendarStore();
 
   // Persist Darkmode
   useEffect(() => {
@@ -45,17 +53,11 @@ function App() {
 
   // Load calendars from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("caldav_calendars");
-    if (saved) setCalendars(JSON.parse(saved));
-  }, []);
-
-  // Save calendars to localStorage when changed
-  useEffect(() => {
-    localStorage.setItem("caldav_calendars", JSON.stringify(calendars));
-  }, [calendars]);
+    loadFromStorage();
+  }, [loadFromStorage]);
 
   const handleRemove = (uid: string) => {
-    setCalendars(calendars.filter((cal) => cal.uid !== uid));
+    removeCalendar(uid);
   };
 
   const handleEditCalendar = (uid: string) => {
@@ -67,11 +69,14 @@ function App() {
   };
 
   const handleSaveCalendar = (calendar: ICalendar) => {
-    setCalendars((cals) =>
-      cals.find((c) => c.uid === calendar.uid)
-        ? cals.map((c) => (c.uid === calendar.uid ? { ...c, ...calendar } : c))
-        : [...cals, calendar],
-    );
+    const { addCalendar, updateCalendar } = useCalendarStore.getState();
+    const existingCalendar = calendars.find((c) => c.uid === calendar.uid);
+
+    if (existingCalendar) {
+      updateCalendar(calendar);
+    } else {
+      addCalendar(calendar);
+    }
     setModal({ open: false, isEdit: false });
   };
 
@@ -82,29 +87,19 @@ function App() {
   return (
     <main className="h-screen w-screen flex bg-white dark:bg-neutral-900">
       <Sidebar
-        calendars={calendars}
-        loading={loading}
         isDark={darkMode}
         width={sidebarWidth}
-        onClickRemove={handleRemove}
         onClickAdd={() => setModal({ open: true, isEdit: false })}
         onClickCalendar={handleEditCalendar}
-        onClickImport={(imported) => setCalendars(imported)}
         onClickDarkMode={(dark) => setDarkMode(dark)}
         onWidthChange={setSidebarWidth}
       />
-      <Calendar
-        className="flex flex-1 h-screen"
-        calendars={calendars}
-        loading={loading}
-        setLoading={setLoading}
-      />
+      <Calendar className="flex flex-1 h-screen" />
       {modal.open && (
         <CalendarModal
           open={modal.open}
           isEdit={modal.isEdit}
           calendar={modal.calendar}
-          onSave={handleSaveCalendar}
           onClose={handleClose}
         />
       )}

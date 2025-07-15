@@ -2,33 +2,30 @@ import React from "react";
 import Button from "./Button";
 import Text from "./Text";
 import type { Calendar } from "./types";
+import { useCalendarStore } from "./stores/calendarStore";
 
 interface SidebarProps {
-  calendars: Calendar[];
-  loading?: boolean;
   isDark?: boolean;
   width?: number;
-  onClickRemove: (uid: string) => void;
   onClickAdd: (v: boolean) => void;
   onClickCalendar: (uid: string) => void;
-  onClickImport?: (calendars: Calendar[]) => void;
   onClickDarkMode?: (dark: boolean) => void;
   onWidthChange?: (width: number) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
-  calendars,
-  loading = false,
   isDark = false,
   width,
-  onClickRemove,
   onClickAdd,
   onClickCalendar,
-  onClickImport,
   onClickDarkMode,
   onWidthChange,
   ...props
 }) => {
+  // Zustand store
+  const { calendars, loading, removeCalendar, importCalendars } =
+    useCalendarStore();
+
   // Drag logic
   const handleRef = React.useRef<HTMLDivElement>(null);
   const dragging = React.useRef(false);
@@ -144,7 +141,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           try {
             const parsed = JSON.parse(text);
             if (Array.isArray(parsed)) {
-              if (typeof onClickImport === "function") onClickImport(parsed);
+              importCalendars(parsed);
             } else {
               alert("Invalid file format: expected an array");
             }
@@ -183,7 +180,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className="ml-2 px-2 py-0.5 text-xs"
                 variant="secondary"
                 onClick={() => {
-                  onClickRemove(cal.uid);
+                  removeCalendar(cal.uid);
                 }}
                 title="Remove"
                 type="button"
