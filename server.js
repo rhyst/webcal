@@ -16,20 +16,11 @@ const PORT = process.env.PORT || 8080;
 const corsProxy = corsAnywhere.createServer({
   originWhitelist: [], // Allow all origins
   requireHeaders: [], // No required headers
-  removeHeaders: [
-    "cookie",
-    "cookie2",
-    // Remove other headers that might cause issues
-  ],
+  removeHeaders: ["cookie", "cookie2"],
   redirectSameOrigin: true,
   httpProxyOptions: {
-    // Set a proper User-Agent
     xfwd: false,
   },
-  // Optional: rate limiting
-  // setHeaders: {
-  //   'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-  // }
 });
 
 // Create the main server
@@ -147,5 +138,7 @@ function shutdown() {
 
 server.listen(PORT, HOST, () => {
   console.log(`🚀 Server running at http://${HOST}:${PORT}`);
-  console.log(`🔗 CORS proxy available at: /proxy/https://example.com`);
+  console.log(
+    `🔗 CORS proxy available at: http://${HOST}:${PORT}/proxy/https://example.com`,
+  );
 });

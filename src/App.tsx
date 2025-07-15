@@ -10,7 +10,6 @@ interface CalendarModalState {
   calendar?: ICalendar;
 }
 
-
 function App() {
   const [calendars, setCalendars] = useState<ICalendar[]>([]);
   const [modal, setModal] = useState<CalendarModalState>({

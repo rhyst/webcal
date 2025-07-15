@@ -76,5 +76,6 @@ WebCal includes a built-in CORS proxy for accessing remote calendar resources th
 - The proxy is served by the same Node.js server as the static app, so no additional setup is required.
 
 **Example:**
+
 - If your app is running at `https://yourdomain.com`, the proxy endpoint is `https://yourdomain.com/proxy/<remote-url>`.
 - The app will automatically use this endpoint for any calendar with the "Use Proxy" option enabled.
