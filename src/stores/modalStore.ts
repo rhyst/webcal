@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
 import type { Calendar, CalendarEvent } from "../types";
 
 interface CalendarModalState {
@@ -38,54 +39,56 @@ interface ModalState {
   closeEventModal: () => void;
 }
 
-export const useModalStore = create<ModalState>((set) => ({
-  // Initial state
-  calendarModal: {
-    open: false,
-    isEdit: false,
-  },
+export const useModalStore = create<ModalState>()(
+  immer((set) => ({
+    // Initial state
+    calendarModal: {
+      open: false,
+      isEdit: false,
+    },
 
-  eventModal: {
-    open: false,
-    isEdit: false,
-  },
+    eventModal: {
+      open: false,
+      isEdit: false,
+    },
 
-  // Calendar modal actions
-  openCalendarModal: (isEdit, calendar) =>
-    set({
-      calendarModal: {
-        open: true,
-        isEdit,
-        calendar,
-      },
-    }),
+    // Calendar modal actions
+    openCalendarModal: (isEdit, calendar) =>
+      set((state) => {
+        state.calendarModal = {
+          open: true,
+          isEdit,
+          calendar,
+        };
+      }),
 
-  closeCalendarModal: () =>
-    set({
-      calendarModal: {
-        open: false,
-        isEdit: false,
-      },
-    }),
+    closeCalendarModal: () =>
+      set((state) => {
+        state.calendarModal = {
+          open: false,
+          isEdit: false,
+        };
+      }),
 
-  // Event modal actions
-  openEventModal: (isEdit, event, startISO, endISO, allDay) =>
-    set({
-      eventModal: {
-        open: true,
-        isEdit,
-        event,
-        startISO,
-        endISO,
-        allDay,
-      },
-    }),
+    // Event modal actions
+    openEventModal: (isEdit, event, startISO, endISO, allDay) =>
+      set((state) => {
+        state.eventModal = {
+          open: true,
+          isEdit,
+          event,
+          startISO,
+          endISO,
+          allDay,
+        };
+      }),
 
-  closeEventModal: () =>
-    set({
-      eventModal: {
-        open: false,
-        isEdit: false,
-      },
-    }),
-}));
+    closeEventModal: () =>
+      set((state) => {
+        state.eventModal = {
+          open: false,
+          isEdit: false,
+        };
+      }),
+  })),
+);

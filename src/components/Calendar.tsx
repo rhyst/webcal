@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import iCalendarPlugin from "@fullcalendar/icalendar";
+import rrulePlugin from "@fullcalendar/rrule";
 import type {
   DateSelectArg,
   EventClickArg,
@@ -20,31 +21,23 @@ interface CalendarProps {
 
 const Calendar: React.FC<CalendarProps> = ({ className }) => {
   // Get store state and actions
-  const { calendars, events, dateRange, setDateRange, fetchEvents } =
-    useCalendarStore();
+  const calendarRef = useRef<FullCalendar>(null);
+  const calendars = useCalendarStore((state) => state.calendars);
+  const events = useCalendarStore((state) => state.events);
+  const setDateRange = useCalendarStore((state) => state.setDateRange);
+  const fetchEvents = useCalendarStore((state) => state.fetchEvents);
+  const getEvent = useCalendarStore((state) => state.getEvent);
+  const openEventModal = useModalStore((state) => state.openEventModal);
 
-  // Get modal store
-  const { openEventModal } = useModalStore();
-
-  useEffect(() => {
-    const enabledCalendars = calendars.filter((cal) => cal.enabled !== false);
-    // Only fetch events for CalDAV calendars
-    const caldavCalendars = enabledCalendars.filter(
-      (cal) => !cal.type || cal.type === "caldav",
-    );
-
-    if (caldavCalendars.length > 0 && dateRange) {
-      fetchEvents();
-    }
-  }, [calendars, dateRange, fetchEvents]);
-
-  // Handlers for FullCalendar
   const handleDateClick = (arg: DateSelectArg) => {
     openEventModal(false, undefined, arg.startStr, arg.endStr, true);
   };
 
   const handleEventClick = (arg: EventClickArg) => {
-    const event = events.find((e) => e.uid === arg.event.extendedProps.uid);
+    const event = getEvent(
+      arg.event.extendedProps.calendarUid,
+      arg.event.extendedProps.uid,
+    );
     if (!event) {
       return;
     }
@@ -53,18 +46,30 @@ const Calendar: React.FC<CalendarProps> = ({ className }) => {
 
   const handleDatesSet = (arg: DatesSetArg) => {
     setDateRange({ start: arg.startStr, end: arg.endStr });
+    fetchEvents();
   };
+
+  useEffect(() => {
+    if (calendarRef.current) {
+      const start = calendarRef.current.getApi().view.activeStart;
+      const end = calendarRef.current.getApi().view.activeEnd;
+      setDateRange({ start: start.toISOString(), end: end.toISOString() });
+      fetchEvents();
+    }
+  }, [calendars, fetchEvents]);
 
   return (
     <div className={`w-full h-full m-0 p-0 ${className}`}>
       <div className="h-full w-full">
         <FullCalendar
+          ref={calendarRef}
           plugins={[
             dayGridPlugin,
             timeGridPlugin,
             listPlugin,
             interactionPlugin,
             iCalendarPlugin,
+            rrulePlugin,
           ]}
           initialView="dayGridMonth"
           headerToolbar={{
@@ -72,37 +77,43 @@ const Calendar: React.FC<CalendarProps> = ({ className }) => {
             center: "title",
             right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
           }}
-          eventSources={[
-            // ICS Events
-            ...calendars
-              .filter((cal) => cal.enabled !== false && cal.type === "ics")
-              .map((cal) => ({
+          buttonText={{
+            list: "Agenda",
+            today: "Today",
+            month: "Month",
+            week: "Week",
+            day: "Day",
+          }}
+          eventSources={calendars.map((cal) => {
+            if (!cal.enabled) return {};
+            if (cal.type === "ics") {
+              return {
                 url: cal.useProxy ? proxyUrl(cal.url) : cal.url,
                 format: "ics",
                 color: cal.color,
                 id: cal.uid,
                 display: "block",
-                // Optionally, you can add extra params here
-              })),
-            // Caldav events
-            {
-              events: events.map((event) => {
-                const calendar = calendars.find(
-                  (c) => c.uid === event.calendarUid,
-                );
+              };
+            }
+            return {
+              events: Object.values(events[cal.uid] || {}),
+              eventDataTransform: (event) => {
                 return {
                   title: event.title,
                   start: event.startISO,
                   end: event.endISO,
-                  backgroundColor: calendar?.color,
-                  borderColor: calendar?.color,
+                  allDay: event.allDay,
+                  rrule: event.rrule,
                   extendedProps: {
                     uid: event.uid,
+                    calendarUid: cal.uid,
                   },
                 };
-              }),
-            },
-          ]}
+              },
+              backgroundColor: cal.color,
+              borderColor: cal.color,
+            };
+          })}
           editable={true}
           selectable={true}
           height="100%"

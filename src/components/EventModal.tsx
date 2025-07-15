@@ -8,7 +8,6 @@ import Input from "./Input";
 import Checkbox from "./Checkbox";
 import Select from "./Select";
 import Scheduler from "./Scheduler";
-import { RRule } from "rrule";
 
 interface EventModalProps {
   open: boolean;
@@ -84,9 +83,10 @@ const EventModal: React.FC<EventModalProps> = ({
   };
 
   const handleSave = () => {
+    const uid = Math.random().toString(36).slice(2) + Date.now();
     const data: CalendarEvent = {
       ...event,
-      uid: event?.uid || Math.random().toString(36).slice(2) + Date.now(),
+      uid: event?.uid || uid,
       title,
       startISO: start,
       endISO: end,
@@ -102,7 +102,7 @@ const EventModal: React.FC<EventModalProps> = ({
       isOpen={open}
       onRequestClose={onClose}
       overlayClassName="fixed inset-0 bg-black/35 z-50 flex items-center justify-center"
-      className="bg-white dark:bg-neutral-900 text-[#222] dark:text-gray-100 p-8 rounded-xl min-w-[340px] shadow-xl border border-[#e0e0e0] dark:border-gray-700 flex flex-col gap-3 outline-none"
+      className="bg-white dark:bg-neutral-900 text-[#222] dark:text-gray-100 p-8 rounded-xl min-w-[30vw] max-w-[60vw] shadow-xl border border-[#e0e0e0] dark:border-gray-700 flex flex-col gap-3 outline-none"
       ariaHideApp={false}
     >
       <Text
@@ -115,7 +115,7 @@ const EventModal: React.FC<EventModalProps> = ({
         {isEdit ? "Edit Event" : "Create Event"}
       </Text>
       <div className="flex gap-3">
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 flex-1">
           <div>
             <Text as="label" size="sm" weight="medium" color="gray">
               Title:
@@ -198,20 +198,19 @@ const EventModal: React.FC<EventModalProps> = ({
             />
           </div>
         </div>
-        <div className="flex flex-col gap-3">
-          {/* Scheduler Component - Hidden unless repeat is checked */}
-          {isRepeating && (
+        {isRepeating && (
+          <div className="flex flex-col gap-3 flex-1">
+            {/* Scheduler Component - Hidden unless repeat is checked */}
             <Scheduler
               onRruleChange={(rrule) => {
-                // TODO: Handle rrule changes
-                setRrule(rrule?.toString());
+                setRrule(rrule);
               }}
               startDate={start}
-              rrule={rrule ? RRule.fromString(rrule) : undefined}
+              rrule={rrule}
               className="w-full"
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
       <div className="flex gap-2 justify-end">
         {isEdit && event ? (

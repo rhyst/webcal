@@ -1,12 +1,17 @@
-import { parseISO } from "date-fns";
-import React, { useState, useEffect } from "react";
+import { format, parseISO } from "date-fns";
+import React from "react";
 import { RRule, Frequency, Weekday } from "rrule";
 import { tv } from "tailwind-variants";
+import Checkbox from "./Checkbox";
+
+const castArray = <T,>(value: T | T[]): T[] => {
+  return Array.isArray(value) ? value : [value];
+};
 
 interface SchedulerProps {
-  rrule?: RRule;
+  rrule?: string;
   startDate?: string;
-  onRruleChange: (rrule: RRule | null) => void;
+  onRruleChange: (rrule?: string) => void;
   className?: string;
 }
 
@@ -32,130 +37,109 @@ const Scheduler: React.FC<SchedulerProps> = ({
   onRruleChange,
   className = "",
 }) => {
-  const [frequency, setFrequency] = useState<Frequency>(Frequency.DAILY);
-  const [interval, setInterval] = useState<number>(1);
-  const [endDate, setEndDate] = useState<string>("");
-  const [count, setCount] = useState<number>(0);
-  const [byWeekDay, setByWeekDay] = useState<Weekday[]>([]);
-  const [byMonthDay, setByMonthDay] = useState<number[]>([]);
-  const [byMonth, setByMonth] = useState<number[]>([]);
-  const [bySetPos, setBySetPos] = useState<number[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const options = RRule.fromString(rrule || "").options;
 
-  // Parse existing rrule on mount
-  useEffect(() => {
-    if (rrule) {
-      const options = rrule.origOptions;
-      setFrequency(options.freq || Frequency.DAILY);
-      setInterval(options.interval || 1);
-      setEndDate(
-        options.until ? options.until.toISOString().split("T")[0] : "",
-      );
-      setCount(options.count || 0);
-      setByWeekDay(
-        Array.isArray(options.byweekday) &&
-          options.byweekday.every((item) => item instanceof Weekday)
-          ? options.byweekday
-          : [],
-      );
-      setByMonthDay(
-        Array.isArray(options.bymonthday) ? options.bymonthday : [],
-      );
-      setByMonth(Array.isArray(options.bymonth) ? options.bymonth : []);
-      setBySetPos(Array.isArray(options.bysetpos) ? options.bysetpos : []);
+  const handleChange = (partial: Partial<RRule.Options>) => {
+    const newOptions = { ...options, ...partial };
+    newOptions.dtstart = parseISO(startDate || "");
+    onRruleChange(new RRule(newOptions).toString());
+  };
+
+  const handleFrequencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    options.freq = Number(e.target.value);
+    options.byhour = [];
+    options.byminute = [];
+    options.bysecond = [];
+    options.bysetpos = [];
+    options.bymonthday = [];
+    options.bymonth = [];
+    options.byweekday = [];
+    options.count = undefined;
+    options.until = undefined;
+    handleChange(options);
+  };
+
+  const handleWeekDayToggle = (weekday: number) => {
+    const existing = options.byweekday as number[];
+    let byweekday = [];
+    if (existing) {
+      byweekday = castArray(existing).includes(weekday)
+        ? castArray(existing).filter((day) => day !== weekday)
+        : [...castArray(existing), weekday];
+    } else {
+      byweekday = [weekday];
     }
-    setIsInitialized(true);
-  }, [rrule]);
-
-  // Generate new rrule when options change
-  useEffect(() => {
-    if (!isInitialized) return; // Skip during initial parse
-
-    const options: any = {
-      freq: frequency,
-      interval: interval,
-      dtstart: startDate ? parseISO(startDate) : new Date(),
-    };
-
-    if (endDate) {
-      options.until = new Date(endDate);
-    }
-
-    if (count > 0) {
-      options.count = count;
-    }
-
-    if (byWeekDay.length > 0) {
-      options.byweekday = byWeekDay;
-    }
-
-    if (byMonthDay.length > 0) {
-      options.bymonthday = byMonthDay;
-    }
-
-    if (byMonth.length > 0) {
-      options.bymonth = byMonth;
-    }
-
-    if (bySetPos.length > 0) {
-      options.bysetpos = bySetPos;
-    }
-
-    try {
-      const newRrule = new RRule(options);
-      onRruleChange(newRrule);
-    } catch (error) {
-      console.error("Invalid RRule options:", error);
-      onRruleChange(null);
-    }
-  }, [
-    isInitialized,
-    startDate,
-    frequency,
-    interval,
-    endDate,
-    count,
-    byWeekDay,
-    byMonthDay,
-    byMonth,
-    bySetPos,
-    onRruleChange,
-  ]);
-
-  const handleWeekDayToggle = (weekday: Weekday) => {
-    setByWeekDay((prev) =>
-      prev.includes(weekday)
-        ? prev.filter((day) => day !== weekday)
-        : [...prev, weekday],
-    );
+    handleChange({ byweekday });
   };
 
   const handleMonthDayToggle = (day: number) => {
-    setByMonthDay((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
-    );
+    const existing = options.bymonthday;
+    let bymonthday: number[] = [];
+    if (existing) {
+      bymonthday = castArray(existing).includes(day)
+        ? castArray(existing).filter((d) => d !== day)
+        : [...castArray(existing), day];
+    } else {
+      bymonthday = [day];
+    }
+    if (
+      bymonthday.length === 0 &&
+      castArray(options.byweekday || [])?.length === 0
+    ) {
+      bymonthday = [1];
+    }
+    handleChange({ bymonthday });
   };
 
   const handleMonthToggle = (month: number) => {
-    setByMonth((prev) =>
-      prev.includes(month) ? prev.filter((m) => m !== month) : [...prev, month],
-    );
+    const existing = options.bymonth;
+    let bymonth = [];
+    if (existing) {
+      bymonth = castArray(existing).includes(month)
+        ? castArray(existing).filter((m) => m !== month)
+        : [...castArray(existing), month];
+    } else {
+      bymonth = [month];
+    }
+    handleChange({ bymonth });
   };
 
   const handleSetPosToggle = (pos: number) => {
-    setBySetPos((prev) =>
-      prev.includes(pos) ? prev.filter((p) => p !== pos) : [...prev, pos],
-    );
+    const existing = options.bysetpos;
+    let bysetpos = [];
+    if (existing) {
+      bysetpos = castArray(existing).includes(pos)
+        ? castArray(existing).filter((p) => p !== pos)
+        : [...castArray(existing), pos];
+    } else {
+      bysetpos = [pos];
+    }
+    handleChange({ bysetpos });
+  };
+
+  const handleUntilChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const until = new Date(e.target.value);
+    handleChange({ until });
+  };
+
+  const handleCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const count = Number(e.target.value);
+    handleChange({ count });
+  };
+
+  const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const interval = Number(e.target.value);
+    handleChange({ interval });
   };
 
   const weekDays = [
-    { value: Weekday.fromStr("MO"), label: "Monday" },
-    { value: Weekday.fromStr("TU"), label: "Tuesday" },
-    { value: Weekday.fromStr("WE"), label: "Wednesday" },
-    { value: Weekday.fromStr("TH"), label: "Thursday" },
-    { value: Weekday.fromStr("FR"), label: "Friday" },
-    { value: Weekday.fromStr("SA"), label: "Saturday" },
-    { value: Weekday.fromStr("SU"), label: "Sunday" },
+    { value: Weekday.fromStr("MO").weekday, label: "Monday" },
+    { value: Weekday.fromStr("TU").weekday, label: "Tuesday" },
+    { value: Weekday.fromStr("WE").weekday, label: "Wednesday" },
+    { value: Weekday.fromStr("TH").weekday, label: "Thursday" },
+    { value: Weekday.fromStr("FR").weekday, label: "Friday" },
+    { value: Weekday.fromStr("SA").weekday, label: "Saturday" },
+    { value: Weekday.fromStr("SU").weekday, label: "Sunday" },
   ];
 
   const months = [
@@ -181,6 +165,8 @@ const Scheduler: React.FC<SchedulerProps> = ({
     { value: -1, label: "Last" },
   ];
 
+  console.log("options", options);
+
   return (
     <div className={scheduler({ className })}>
       <div className="space-y-6">
@@ -189,8 +175,8 @@ const Scheduler: React.FC<SchedulerProps> = ({
           <label className={label()}>Frequency</label>
           <select
             className={select()}
-            value={frequency}
-            onChange={(e) => setFrequency(Number(e.target.value))}
+            value={options.freq}
+            onChange={handleFrequencyChange}
           >
             <option value={Frequency.YEARLY}>Yearly</option>
             <option value={Frequency.MONTHLY}>Monthly</option>
@@ -208,8 +194,8 @@ const Scheduler: React.FC<SchedulerProps> = ({
             type="number"
             min="1"
             className={input()}
-            value={interval}
-            onChange={(e) => setInterval(Number(e.target.value))}
+            value={options.interval}
+            onChange={handleIntervalChange}
           />
         </div>
 
@@ -219,8 +205,8 @@ const Scheduler: React.FC<SchedulerProps> = ({
           <input
             type="date"
             className={input()}
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            value={options.until?.toISOString().split("T")[0]}
+            onChange={handleUntilChange}
           />
         </div>
 
@@ -231,15 +217,15 @@ const Scheduler: React.FC<SchedulerProps> = ({
             type="number"
             min="0"
             className={input()}
-            value={count}
-            onChange={(e) => setCount(Number(e.target.value))}
+            value={options.count}
+            onChange={handleCountChange}
             placeholder="Leave empty for no limit"
           />
         </div>
 
         {/* By Week Day */}
-        {(frequency === Frequency.WEEKLY ||
-          frequency === Frequency.MONTHLY) && (
+        {(options.freq === Frequency.WEEKLY ||
+          options.freq === Frequency.MONTHLY) && (
           <div>
             <label className={label()}>By Week Day</label>
             <div className="grid grid-cols-2 gap-2">
@@ -248,15 +234,13 @@ const Scheduler: React.FC<SchedulerProps> = ({
                   key={index}
                   className="flex items-center space-x-2 cursor-pointer"
                 >
-                  <input
+                  <Checkbox
                     type="checkbox"
-                    checked={byWeekDay.includes(day.value)}
+                    checked={castArray(options.byweekday).includes(day.value)}
                     onChange={() => handleWeekDayToggle(day.value)}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    label={day.label}
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {day.label}
-                  </span>
                 </label>
               ))}
             </div>
@@ -264,7 +248,7 @@ const Scheduler: React.FC<SchedulerProps> = ({
         )}
 
         {/* By Month Day */}
-        {frequency === Frequency.MONTHLY && (
+        {options.freq === Frequency.MONTHLY && (
           <div>
             <label className={label()}>By Month Day</label>
             <div className="grid grid-cols-7 gap-1">
@@ -273,7 +257,7 @@ const Scheduler: React.FC<SchedulerProps> = ({
                   key={day}
                   onClick={() => handleMonthDayToggle(day)}
                   className={`p-2 text-xs rounded ${
-                    byMonthDay.includes(day)
+                    castArray(options.bymonthday).includes(day)
                       ? "bg-blue-600 text-white"
                       : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                   }`}
@@ -286,7 +270,7 @@ const Scheduler: React.FC<SchedulerProps> = ({
         )}
 
         {/* By Month */}
-        {frequency === Frequency.YEARLY && (
+        {options.freq === Frequency.YEARLY && (
           <div>
             <label className={label()}>By Month</label>
             <div className="grid grid-cols-3 gap-2">
@@ -297,7 +281,7 @@ const Scheduler: React.FC<SchedulerProps> = ({
                 >
                   <input
                     type="checkbox"
-                    checked={byMonth.includes(month.value)}
+                    checked={castArray(options.bymonth).includes(month.value)}
                     onChange={() => handleMonthToggle(month.value)}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
@@ -310,26 +294,24 @@ const Scheduler: React.FC<SchedulerProps> = ({
           </div>
         )}
 
-        {/* By Set Position */}
-        {(frequency === Frequency.MONTHLY ||
-          frequency === Frequency.YEARLY) && (
+        {/* By Occurence */}
+        {(options.freq === Frequency.MONTHLY ||
+          options.freq === Frequency.YEARLY) && (
           <div>
-            <label className={label()}>By Set Position</label>
+            <label className={label()}>By Occurence</label>
             <div className="grid grid-cols-5 gap-2">
               {setPositions.map((pos) => (
                 <label
                   key={pos.value}
                   className="flex items-center space-x-2 cursor-pointer"
                 >
-                  <input
+                  <Checkbox
                     type="checkbox"
-                    checked={bySetPos.includes(pos.value)}
+                    checked={castArray(options.bysetpos).includes(pos.value)}
                     onChange={() => handleSetPosToggle(pos.value)}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    label={pos.label}
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {pos.label}
-                  </span>
                 </label>
               ))}
             </div>
@@ -340,7 +322,10 @@ const Scheduler: React.FC<SchedulerProps> = ({
         {rrule && (
           <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
             <code className="text-sm text-gray-900 dark:text-gray-100 break-all">
-              {rrule.toText()}
+              Repeat {RRule.fromString(rrule).toText()} starting from{" "}
+              {format(parseISO(startDate || ""), "MMM d, yyyy")}
+              <br />
+              {rrule}
             </code>
           </div>
         )}

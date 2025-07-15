@@ -22,8 +22,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   ...props
 }) => {
   // Zustand store
-  const { calendars, loading, removeCalendar, importCalendars } =
-    useCalendarStore();
+  const calendars = useCalendarStore((state) => state.calendars);
+  const loading = useCalendarStore((state) => state.loading);
+  const removeCalendar = useCalendarStore((state) => state.removeCalendar);
+  const importCalendars = useCalendarStore((state) => state.importCalendars);
 
   // Drag logic
   const handleRef = React.useRef<HTMLDivElement>(null);

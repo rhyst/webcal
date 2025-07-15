@@ -19,17 +19,17 @@ function App() {
   });
 
   // Get store actions and state
-  const { calendars, loadFromStorage, saveEvent, deleteEvent } =
-    useCalendarStore();
+  const calendars = useCalendarStore((state) => state.calendars);
+  const loadFromStorage = useCalendarStore((state) => state.loadFromStorage);
+  const saveEvent = useCalendarStore((state) => state.saveEvent);
+  const deleteEvent = useCalendarStore((state) => state.deleteEvent);
 
   // Get modal store
-  const {
-    calendarModal,
-    eventModal,
-    openCalendarModal,
-    closeCalendarModal,
-    closeEventModal,
-  } = useModalStore();
+  const calendarModal = useModalStore((state) => state.calendarModal);
+  const eventModal = useModalStore((state) => state.eventModal);
+  const openCalendarModal = useModalStore((state) => state.openCalendarModal);
+  const closeCalendarModal = useModalStore((state) => state.closeCalendarModal);
+  const closeEventModal = useModalStore((state) => state.closeEventModal);
 
   // Persist Darkmode
   useEffect(() => {

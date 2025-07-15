@@ -49,7 +49,8 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
     calendar?.useProxy || false,
   );
 
-  const { addCalendar, updateCalendar } = useCalendarStore();
+  const addCalendar = useCalendarStore((state) => state.addCalendar);
+  const updateCalendar = useCalendarStore((state) => state.updateCalendar);
 
   const handleSave = () => {
     const cal: Calendar = {
