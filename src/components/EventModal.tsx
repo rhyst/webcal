@@ -3,7 +3,7 @@ import { format, parseISO, isValid, parse, formatISO } from "date-fns";
 import Button from "./Button";
 import Text from "./Text";
 import Modal from "react-modal";
-import type { Calendar, CalendarEvent } from "./types";
+import type { Calendar, CalendarEvent } from "../types";
 import Input from "./Input";
 import Checkbox from "./Checkbox";
 import Select from "./Select";

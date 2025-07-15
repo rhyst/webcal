@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -10,41 +10,21 @@ import type {
   EventClickArg,
   DatesSetArg,
 } from "@fullcalendar/core";
-import EventModal from "./EventModal";
-import type { CalendarEvent } from "./types";
-import { useCalendarStore } from "./stores/calendarStore";
-import { proxyUrl } from "./utils";
+import { useCalendarStore } from "../stores/calendarStore";
+import { useModalStore } from "../stores/modalStore";
+import { proxyUrl } from "../utils";
 
 interface CalendarProps {
   className?: string;
 }
 
-interface EventModalState {
-  open: boolean;
-  isEdit: boolean;
-  startISO?: string;
-  endISO?: string;
-  allDay?: boolean;
-  event?: CalendarEvent;
-}
-
 const Calendar: React.FC<CalendarProps> = ({ className }) => {
-  const [modal, setModal] = useState<EventModalState>({
-    open: false,
-    isEdit: false,
-  });
-
   // Get store state and actions
-  const {
-    calendars,
-    events,
-    error,
-    dateRange,
-    setDateRange,
-    fetchEvents,
-    saveEvent,
-    deleteEvent,
-  } = useCalendarStore();
+  const { calendars, events, dateRange, setDateRange, fetchEvents } =
+    useCalendarStore();
+
+  // Get modal store
+  const { openEventModal } = useModalStore();
 
   useEffect(() => {
     const enabledCalendars = calendars.filter((cal) => cal.enabled !== false);
@@ -60,13 +40,7 @@ const Calendar: React.FC<CalendarProps> = ({ className }) => {
 
   // Handlers for FullCalendar
   const handleDateClick = (arg: DateSelectArg) => {
-    setModal({
-      open: true,
-      isEdit: false,
-      startISO: arg.startStr,
-      endISO: arg.endStr,
-      allDay: true,
-    });
+    openEventModal(false, undefined, arg.startStr, arg.endStr, true);
   };
 
   const handleEventClick = (arg: EventClickArg) => {
@@ -74,47 +48,15 @@ const Calendar: React.FC<CalendarProps> = ({ className }) => {
     if (!event) {
       return;
     }
-    setModal({
-      open: true,
-      isEdit: true,
-      event,
-      startISO: event.startISO,
-      endISO: event.endISO,
-      allDay: event.allDay,
-    });
+    openEventModal(true, event, event.startISO, event.endISO, event.allDay);
   };
 
   const handleDatesSet = (arg: DatesSetArg) => {
     setDateRange({ start: arg.startStr, end: arg.endStr });
   };
 
-  const handleModalClose = () => {
-    setModal({ open: false, isEdit: false });
-  };
-
-  const handleEventSave = async (event: CalendarEvent) => {
-    try {
-      await saveEvent(event, modal.isEdit, modal.event);
-      setModal({ open: false, isEdit: false });
-    } catch (e) {
-      // Error is handled in the store
-      console.error("Failed to save event:", e);
-    }
-  };
-
-  const handleEventDelete = async (event: CalendarEvent) => {
-    try {
-      await deleteEvent(event);
-      setModal({ open: false, isEdit: false });
-    } catch (e) {
-      // Error is handled in the store
-      console.error("Failed to delete event:", e);
-    }
-  };
-
   return (
     <div className={`w-full h-full m-0 p-0 ${className}`}>
-      {error && <p className="fixed text-red-600 p-4">{error}</p>}
       <div className="h-full w-full">
         <FullCalendar
           plugins={[
@@ -169,20 +111,6 @@ const Calendar: React.FC<CalendarProps> = ({ className }) => {
           datesSet={handleDatesSet}
         />
       </div>
-      {modal.open && (
-        <EventModal
-          open={modal.open}
-          isEdit={modal.isEdit}
-          start={modal.startISO}
-          end={modal.endISO}
-          allDay={modal.allDay}
-          calendars={calendars}
-          event={modal.event}
-          onClose={handleModalClose}
-          onSave={handleEventSave}
-          onDelete={handleEventDelete}
-        />
-      )}
     </div>
   );
 };

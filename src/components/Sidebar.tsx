@@ -1,8 +1,7 @@
 import React from "react";
 import Button from "./Button";
 import Text from "./Text";
-import type { Calendar } from "./types";
-import { useCalendarStore } from "./stores/calendarStore";
+import { useCalendarStore } from "../stores/calendarStore";
 
 interface SidebarProps {
   isDark?: boolean;
@@ -198,16 +197,15 @@ const Sidebar: React.FC<SidebarProps> = ({
         title="Toggle dark mode"
         type="button"
       >
-        {isDark ? "🌙 Dark" : "☀️ Light"}
+        {isDark ? "☀️" : "🌙"}
       </Button>
       <div
         ref={handleRef}
-        className="absolute top-0 right-0 h-full w-2 cursor-col-resize z-50 bg-transparent hover:bg-blue-200 dark:hover:bg-blue-900 transition"
+        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500"
         onMouseDown={() => {
           dragging.current = true;
           document.body.style.userSelect = "none";
         }}
-        style={{ userSelect: "none" }}
       />
     </div>
   );

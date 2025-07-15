@@ -1,21 +1,12 @@
 import { useState, useEffect } from "react";
-import Sidebar from "./Sidebar";
-import CalendarModal from "./CalendarModal.tsx";
-import Calendar from "./Calendar.tsx";
-import type { Calendar as ICalendar } from "./types.ts";
+import Sidebar from "./components/Sidebar";
+import CalendarModal from "./components/CalendarModal";
+import EventModal from "./components/EventModal";
+import Calendar from "./components/Calendar";
 import { useCalendarStore } from "./stores/calendarStore";
-
-interface CalendarModalState {
-  open: boolean;
-  isEdit: boolean;
-  calendar?: ICalendar;
-}
+import { useModalStore } from "./stores/modalStore";
 
 function App() {
-  const [modal, setModal] = useState<CalendarModalState>({
-    open: false,
-    isEdit: false,
-  });
   const [darkMode, setDarkMode] = useState(() => {
     // Check localStorage or system preference
     const stored = localStorage.getItem("dark_mode");
@@ -28,13 +19,17 @@ function App() {
   });
 
   // Get store actions and state
+  const { calendars, loadFromStorage, saveEvent, deleteEvent } =
+    useCalendarStore();
+
+  // Get modal store
   const {
-    calendars,
-    loading,
-    loadFromStorage,
-    removeCalendar,
-    importCalendars,
-  } = useCalendarStore();
+    calendarModal,
+    eventModal,
+    openCalendarModal,
+    closeCalendarModal,
+    closeEventModal,
+  } = useModalStore();
 
   // Persist Darkmode
   useEffect(() => {
@@ -56,32 +51,32 @@ function App() {
     loadFromStorage();
   }, [loadFromStorage]);
 
-  const handleRemove = (uid: string) => {
-    removeCalendar(uid);
-  };
-
   const handleEditCalendar = (uid: string) => {
     const calendar = calendars.find((c) => c.uid === uid);
     if (!calendar) {
       return;
     }
-    setModal({ open: true, isEdit: true, calendar }); // ensure a new object is set
+    openCalendarModal(true, calendar);
   };
 
-  const handleSaveCalendar = (calendar: ICalendar) => {
-    const { addCalendar, updateCalendar } = useCalendarStore.getState();
-    const existingCalendar = calendars.find((c) => c.uid === calendar.uid);
-
-    if (existingCalendar) {
-      updateCalendar(calendar);
-    } else {
-      addCalendar(calendar);
+  const handleEventSave = async (event: any) => {
+    try {
+      await saveEvent(event, eventModal.isEdit, eventModal.event);
+      closeEventModal();
+    } catch (e) {
+      // Error is handled in the store
+      console.error("Failed to save event:", e);
     }
-    setModal({ open: false, isEdit: false });
   };
 
-  const handleClose = () => {
-    setModal({ open: false, isEdit: false });
+  const handleEventDelete = async (event: any) => {
+    try {
+      await deleteEvent(event);
+      closeEventModal();
+    } catch (e) {
+      // Error is handled in the store
+      console.error("Failed to delete event:", e);
+    }
   };
 
   return (
@@ -89,18 +84,36 @@ function App() {
       <Sidebar
         isDark={darkMode}
         width={sidebarWidth}
-        onClickAdd={() => setModal({ open: true, isEdit: false })}
+        onClickAdd={() => openCalendarModal(false)}
         onClickCalendar={handleEditCalendar}
         onClickDarkMode={(dark) => setDarkMode(dark)}
         onWidthChange={setSidebarWidth}
       />
       <Calendar className="flex flex-1 h-screen" />
-      {modal.open && (
+
+      {/* Calendar Modal */}
+      {calendarModal.open && (
         <CalendarModal
-          open={modal.open}
-          isEdit={modal.isEdit}
-          calendar={modal.calendar}
-          onClose={handleClose}
+          open={calendarModal.open}
+          isEdit={calendarModal.isEdit}
+          calendar={calendarModal.calendar}
+          onClose={closeCalendarModal}
+        />
+      )}
+
+      {/* Event Modal */}
+      {eventModal.open && (
+        <EventModal
+          open={eventModal.open}
+          isEdit={eventModal.isEdit}
+          start={eventModal.startISO}
+          end={eventModal.endISO}
+          allDay={eventModal.allDay}
+          calendars={calendars}
+          event={eventModal.event}
+          onClose={closeEventModal}
+          onSave={handleEventSave}
+          onDelete={handleEventDelete}
         />
       )}
     </main>

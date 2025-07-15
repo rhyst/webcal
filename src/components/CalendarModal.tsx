@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import Button from "./Button";
 import Text from "./Text";
 import Modal from "react-modal";
-import type { Calendar } from "./types";
+import type { Calendar } from "../types";
 import Input from "./Input";
 import Checkbox from "./Checkbox";
 import Radio from "./Radio";
-import { useCalendarStore } from "./stores/calendarStore";
+import { useCalendarStore } from "../stores/calendarStore";
 
 const COLORS = [
   "#4285F4", // Blue
