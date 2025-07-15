@@ -22,6 +22,7 @@ import ICAL from "ical.js.2";
 import EventModal from "./EventModal";
 import type { Calendar as ICalendar, CalendarEvent } from "./types";
 import { proxyUrl, unmangleProxiedUrl } from "./utils";
+import { RRule } from "rrule";
 
 interface CalendarProps {
   className?: string;
@@ -75,7 +76,6 @@ async function fetchEvents({
           if (!vevent) {
             return;
           }
-          // Let's start with RRULEs
           let recur = vevent.getFirstPropertyValue("rrule") as
             | ICAL.Recur
             | undefined;
@@ -122,6 +122,7 @@ async function fetchEvents({
                   ? icalEvent.startDate.isDate
                   : false,
                 calendarUid: cal.uid,
+                rrule: recur.toString(),
                 raw: {
                   ...obj,
                   url: cal.useProxy
@@ -239,6 +240,12 @@ const Calendar: React.FC<CalendarProps> = ({
       if (modal.allDay) {
         ICALEvent.startDate.isDate = true;
         ICALEvent.endDate.isDate = true;
+      }
+      if (event.rrule) {
+        veventComp.addPropertyWithValue(
+          "rrule",
+          ICAL.Recur.fromString(event.rrule.split("RRULE:")[1]),
+        );
       }
       vcal.addSubcomponent(veventComp);
       const iCalString = vcal.toString();

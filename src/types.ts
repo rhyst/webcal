@@ -21,5 +21,6 @@ export interface CalendarEvent {
   startISO: string;
   endISO: string;
   allDay: boolean;
+  rrule?: string;
   raw?: DAVObject;
 }

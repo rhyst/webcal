@@ -7,6 +7,8 @@ import type { Calendar, CalendarEvent } from "./types";
 import Input from "./Input";
 import Checkbox from "./Checkbox";
 import Select from "./Select";
+import Scheduler from "./Scheduler";
+import { RRule } from "rrule";
 
 interface EventModalProps {
   open: boolean;
@@ -70,6 +72,8 @@ const EventModal: React.FC<EventModalProps> = ({
   const [calendar, setCalendar] = useState(
     calendars.find((c) => c.uid === event?.calendarUid) || calendars[0],
   );
+  const [isRepeating, setIsRepeating] = useState(event?.rrule ? true : false);
+  const [rrule, setRrule] = useState(event?.rrule);
 
   const handleStartChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setStart(formatOutputDate(event.target.value, allDay));
@@ -88,6 +92,7 @@ const EventModal: React.FC<EventModalProps> = ({
       endISO: end,
       allDay,
       calendarUid: calendar.uid,
+      rrule: rrule,
     };
     onSave(data);
   };
@@ -109,76 +114,106 @@ const EventModal: React.FC<EventModalProps> = ({
       >
         {isEdit ? "Edit Event" : "Create Event"}
       </Text>
-      <div>
-        <Text as="label" size="sm" weight="medium" color="gray">
-          Title:
-        </Text>
-        <Input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
+      <div className="flex gap-3">
+        <div className="flex flex-col gap-3">
+          <div>
+            <Text as="label" size="sm" weight="medium" color="gray">
+              Title:
+            </Text>
+            <Input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Checkbox
+              checked={allDay}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setAllDay(e.target.checked)
+              }
+              className="mr-1.5"
+              color="#2b6cb0"
+              size={20}
+              label="All Day"
+            />
+          </div>
+          <div>
+            <Text as="label" size="sm" weight="medium" color="gray">
+              Start:
+            </Text>
+            <Input
+              type={allDay ? "date" : "datetime-local"}
+              value={formatInputDate(start, allDay)}
+              onChange={handleStartChange}
+              required
+            />
+          </div>
+          <div>
+            <Text as="label" size="sm" weight="medium" color="gray">
+              End:
+            </Text>
+            <Input
+              type={allDay ? "date" : "datetime-local"}
+              value={formatInputDate(end, allDay)}
+              onChange={handleEndChange}
+            />
+          </div>
+          <div>
+            <Text as="label" size="sm" weight="medium" color="gray">
+              Calendar:
+            </Text>
+            <Select
+              options={calendars.map((cal) => ({
+                value: cal.uid,
+                label: cal.name,
+              }))}
+              value={
+                calendars.length
+                  ? { value: calendar.uid, label: calendar.name }
+                  : null
+              }
+              onChange={(option) => {
+                if (option) {
+                  setCalendar(calendars.find((c) => c.uid === option.value)!);
+                }
+              }}
+              isDisabled={isEdit}
+              className="w-full"
+            />
+          </div>
+
+          {/* Repeat Toggle */}
+          <div>
+            <Checkbox
+              checked={isRepeating}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setIsRepeating(e.target.checked)
+              }
+              className="mr-1.5"
+              color="#2b6cb0"
+              size={20}
+              label="Repeat"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          {/* Scheduler Component - Hidden unless repeat is checked */}
+          {isRepeating && (
+            <Scheduler
+              onRruleChange={(rrule) => {
+                // TODO: Handle rrule changes
+                setRrule(rrule?.toString());
+              }}
+              startDate={start}
+              rrule={rrule ? RRule.fromString(rrule) : undefined}
+              className="w-full"
+            />
+          )}
+        </div>
       </div>
-      <div>
-        <Text as="label" size="sm" weight="medium" color="gray">
-          <Checkbox
-            checked={allDay}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setAllDay(e.target.checked)
-            }
-            className="mr-1.5"
-            color="#2b6cb0"
-            size={20}
-          />
-          All day
-        </Text>
-      </div>
-      <div>
-        <Text as="label" size="sm" weight="medium" color="gray">
-          Start:
-        </Text>
-        <Input
-          type={allDay ? "date" : "datetime-local"}
-          value={formatInputDate(start, allDay)}
-          onChange={handleStartChange}
-          required
-        />
-      </div>
-      <div>
-        <Text as="label" size="sm" weight="medium" color="gray">
-          End:
-        </Text>
-        <Input
-          type={allDay ? "date" : "datetime-local"}
-          value={formatInputDate(end, allDay)}
-          onChange={handleEndChange}
-        />
-      </div>
-      <div>
-        <Text as="label" size="sm" weight="medium" color="gray">
-          Calendar:
-        </Text>
-        <Select
-          options={calendars.map((cal) => ({
-            value: cal.uid,
-            label: cal.name,
-          }))}
-          value={
-            calendars.length
-              ? { value: calendar.uid, label: calendar.name }
-              : null
-          }
-          onChange={(option) => {
-            if (option) {
-              setCalendar(calendars.find((c) => c.uid === option.value)!);
-            }
-          }}
-          isDisabled={isEdit}
-          className="w-full"
-        />
-      </div>
-      <div className="mt-2 flex gap-2 justify-end">
+      <div className="flex gap-2 justify-end">
         {isEdit && event ? (
           <Button
             type="button"
