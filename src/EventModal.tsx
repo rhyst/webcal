@@ -4,6 +4,9 @@ import Button from "./Button";
 import Text from "./Text";
 import Modal from "react-modal";
 import type { Calendar, CalendarEvent } from "./types";
+import Input from "./Input";
+import Checkbox from "./Checkbox";
+import Select from "./Select";
 
 interface EventModalProps {
   open: boolean;
@@ -94,7 +97,7 @@ const EventModal: React.FC<EventModalProps> = ({
       isOpen={open}
       onRequestClose={onClose}
       overlayClassName="fixed inset-0 bg-black/35 z-50 flex items-center justify-center"
-      className="bg-white text-[#222] p-8 rounded-xl min-w-[340px] shadow-xl border border-[#e0e0e0] flex flex-col gap-3 outline-none"
+      className="bg-white dark:bg-neutral-900 text-[#222] dark:text-gray-100 p-8 rounded-xl min-w-[340px] shadow-xl border border-[#e0e0e0] dark:border-gray-700 flex flex-col gap-3 outline-none"
       ariaHideApp={false}
     >
       <Text
@@ -110,21 +113,21 @@ const EventModal: React.FC<EventModalProps> = ({
         <Text as="label" size="sm" weight="medium" color="gray">
           Title:
         </Text>
-        <input
+        <Input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
-          className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         />
       </div>
       <div>
         <Text as="label" size="sm" weight="medium" color="gray">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={allDay}
-            onChange={(e) => setAllDay(e.target.checked)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAllDay(e.target.checked)}
             className="mr-1.5"
+            color="#2b6cb0"
+            size={20}
           />
           All day
         </Text>
@@ -133,43 +136,38 @@ const EventModal: React.FC<EventModalProps> = ({
         <Text as="label" size="sm" weight="medium" color="gray">
           Start:
         </Text>
-        <input
+        <Input
           type={allDay ? "date" : "datetime-local"}
           value={formatInputDate(start, allDay)}
           onChange={handleStartChange}
           required
-          className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         />
       </div>
       <div>
         <Text as="label" size="sm" weight="medium" color="gray">
           End:
         </Text>
-        <input
+        <Input
           type={allDay ? "date" : "datetime-local"}
           value={formatInputDate(end, allDay)}
           onChange={handleEndChange}
-          className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         />
       </div>
       <div>
         <Text as="label" size="sm" weight="medium" color="gray">
           Calendar:
         </Text>
-        <select
-          disabled={isEdit}
-          value={calendar.uid}
-          onChange={(e) =>
-            setCalendar(calendars.find((c) => c.uid === e.target.value)!)
-          }
-          className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
-        >
-          {calendars.map((cal) => (
-            <option key={cal.uid} value={cal.uid}>
-              {cal.name}
-            </option>
-          ))}
-        </select>
+        <Select
+          options={calendars.map((cal) => ({ value: cal.uid, label: cal.name }))}
+          value={calendars.length ? { value: calendar.uid, label: calendar.name } : null}
+          onChange={(option) => {
+            if (option) {
+              setCalendar(calendars.find((c) => c.uid === option.value)!);
+            }
+          }}
+          isDisabled={isEdit}
+          className="w-full"
+        />
       </div>
       <div className="mt-2 flex gap-2 justify-end">
         {isEdit && event ? (

@@ -3,6 +3,8 @@ import Button from "./Button";
 import Text from "./Text";
 import Modal from "react-modal";
 import type { Calendar } from "./types";
+import Input from "./Input";
+import Checkbox from "./Checkbox";
 
 const COLORS = [
   "#4285F4", // Blue
@@ -59,7 +61,7 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
       isOpen={open}
       onRequestClose={onClose}
       overlayClassName="fixed inset-0 bg-black/35 z-50 flex items-center justify-center"
-      className="bg-white text-[#222] p-8 rounded-xl min-w-[340px] shadow-xl border border-[#e0e0e0] flex flex-col gap-3 outline-none"
+      className="bg-white dark:bg-neutral-900 p-8 rounded-xl min-w-[340px] shadow-xl border border-[#e0e0e0] dark:border-gray-700 flex flex-col gap-3 outline-none"
       ariaHideApp={false}
     >
       <Text
@@ -75,11 +77,10 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
         <Text as="label" size="sm" weight="medium" color="gray">
           Name:
         </Text>
-        <input
+        <Input
           type="text"
           value={name || ""}
           onChange={(e) => setName(e.target.value)}
-          className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         />
       </div>
       <div>
@@ -115,46 +116,42 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
         <Text as="label" size="sm" weight="medium" color="gray">
           URL:
         </Text>
-        <input
+        <Input
           type="text"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           disabled={isEdit}
-          className="w-full p-1.5 rounded border border-[#ccc] text-[#888] disabled:bg-[#f3f3f3] disabled:cursor-not-allowed"
+          className="text-[#888] disabled:bg-[#f3f3f3] disabled:cursor-not-allowed"
         />
       </div>
       <div>
         <Text as="label" size="sm" weight="medium" color="gray">
           Username:
         </Text>
-        <input
+        <Input
           type="text"
           value={username}
           onChange={(e) => setUserName(e.target.value)}
-          className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         />
       </div>
       <div>
         <Text as="label" size="sm" weight="medium" color="gray">
           Password:
         </Text>
-        <input
+        <Input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-1.5 rounded border border-[#ccc] text-[#222] bg-[#fafbfc]"
         />
       </div>
       <div>
-        <Text as="label" size="sm" weight="medium" color="gray">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={enabled !== false}
-            onChange={(e) => setEnabled(e.target.checked)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEnabled(e.target.checked)}
             className="mr-1.5"
+            size={20}
+            label="Enabled"
           />
-          Enabled
-        </Text>
       </div>
       <div className="mt-2 flex gap-2 justify-end">
         <Button type="submit" variant="primary" onClick={handleSave}>

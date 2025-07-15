@@ -4,6 +4,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 .fc .fc-toolbar.fc-header-toolbar {
   padding: 6px;
   margin-bottom: 0;
@@ -46,7 +48,6 @@
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;

@@ -6,21 +6,25 @@ import type { Calendar } from "./types";
 interface SidebarProps {
   calendars: Calendar[];
   loading?: boolean;
+  isDark?: boolean;
   onClickRemove: (uid: string) => void;
   onClickAdd: (v: boolean) => void;
   onClickCalendar: (uid: string) => void;
   onClickImport?: (calendars: Calendar[]) => void;
+  onClickDarkMode?: (dark: boolean) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   calendars,
+  isDark = false,
   loading = false,
   onClickRemove,
   onClickAdd,
   onClickCalendar,
   onClickImport,
+  onClickDarkMode
 }) => (
-  <div className="w-[320px] h-screen bg-[#ffffff] border-r border-[#e0e0e0] flex flex-col gap-4 p-2">
+  <div className="w-[320px] h-screen border-r border-[#e0e0e0] dark:border-gray-700 flex flex-col gap-4 p-2">
     <div className="flex items-center justify-between gap-2">
       <Text
         as="h1"
@@ -31,38 +35,38 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         WebCal
       </Text>
-      {loading && (
-        <svg
-          className="animate-spin h-5 w-5 text-blue-600"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-          />
-        </svg>
-      )}
+      <div className="flex items-center gap-2">
+        {loading && (
+          <svg
+            className="animate-spin h-5 w-5 text-blue-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            />
+          </svg>
+        )}
+      </div>
     </div>
     <div className="flex flex-col gap-2">
       <Button
         onClick={() => onClickAdd(true)}
-        className="w-full text-lg"
+        className="w-full"
         variant="primary"
       >
-        <Text as="span" size="base" weight="semibold" color="white">
-          Add Calendar
-        </Text>
+        Add Calendar
       </Button>
       <div className="flex gap-2">
         <Button
@@ -80,23 +84,19 @@ const Sidebar: React.FC<SidebarProps> = ({
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
           }}
-          className="w-full text-lg"
+          className="w-full"
           variant="secondary"
         >
-          <Text as="span" size="base" weight="semibold" color="blue">
-            Export
-          </Text>
+          Export
         </Button>
         <Button
           onClick={() => {
             document.getElementById("import-calendars-input")?.click();
           }}
-          className="w-full text-lg"
+          className="w-full"
           variant="secondary"
         >
-          <Text as="span" size="base" weight="semibold" color="blue">
-            Import
-          </Text>
+          Import
         </Button>
       </div>
     </div>
@@ -130,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             className={`flex items-center group${cal.enabled === false ? " opacity-40" : ""}`}
           >
             <div
-              className="flex items-center flex-1 cursor-pointer hover:bg-blue-50 rounded px-1 py-0.5"
+              className="flex items-center flex-1 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-700 rounded px-1 py-0.5"
               onClick={() => onClickCalendar(cal.uid)}
             >
               <span
@@ -162,6 +162,16 @@ const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </ul>
     </div>
+    <Button
+      className="w-fit"
+      variant="secondary"
+      onClick={() => onClickDarkMode?.(!isDark)}
+      title="Toggle dark mode"
+      type="button"
+    >
+      {isDark ? "🌙 Dark" : "☀️ Light"}
+    </Button>
+
   </div>
 );
 

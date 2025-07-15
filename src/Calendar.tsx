@@ -255,7 +255,7 @@ const Calendar: React.FC<CalendarProps> = ({
   };
 
   return (
-    <div className={`w-full h-full m-0 p-0 bg-white ${className}`}>
+    <div className={`w-full h-full m-0 p-0 ${className}`}>
       {error && <p className="fixed text-red-600 p-4">{error}</p>}
       <div className="h-full w-full">
         <FullCalendar

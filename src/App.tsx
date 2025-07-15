@@ -17,6 +17,21 @@ function App() {
     isEdit: false,
   });
   const [loading, setLoading] = useState(false); // <-- add loading state here
+  const [darkMode, setDarkMode] = useState(() => {
+    // Check localStorage or system preference
+    const stored = localStorage.getItem("dark_mode");
+    if (stored !== null) return stored === "true";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("dark_mode", String(darkMode));
+  }, [darkMode]);
 
   // Load calendars from localStorage on mount
   useEffect(() => {
@@ -55,14 +70,16 @@ function App() {
   };
 
   return (
-    <main className="h-screen w-screen flex">
+    <main className="h-screen w-screen flex bg-white dark:bg-neutral-900">
       <Sidebar
         calendars={calendars}
         loading={loading}
+        isDark={darkMode}
         onClickRemove={handleRemove}
         onClickAdd={() => setModal({ open: true, isEdit: false })}
         onClickCalendar={handleEditCalendar}
         onClickImport={(imported) => setCalendars(imported)}
+        onClickDarkMode={(dark) => setDarkMode(dark)}
       />
       <Calendar
         className="flex flex-1 h-screen"
