@@ -22,7 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onClickAdd,
   onClickCalendar,
   onClickImport,
-  onClickDarkMode
+  onClickDarkMode,
 }) => (
   <div className="w-[320px] h-screen border-r border-[#e0e0e0] dark:border-gray-700 flex flex-col gap-4 p-2">
     <div className="flex items-center justify-between gap-2">
@@ -171,7 +171,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     >
       {isDark ? "🌙 Dark" : "☀️ Light"}
     </Button>
-
   </div>
 );
 

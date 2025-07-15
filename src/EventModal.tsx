@@ -124,7 +124,9 @@ const EventModal: React.FC<EventModalProps> = ({
         <Text as="label" size="sm" weight="medium" color="gray">
           <Checkbox
             checked={allDay}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAllDay(e.target.checked)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setAllDay(e.target.checked)
+            }
             className="mr-1.5"
             color="#2b6cb0"
             size={20}
@@ -158,8 +160,15 @@ const EventModal: React.FC<EventModalProps> = ({
           Calendar:
         </Text>
         <Select
-          options={calendars.map((cal) => ({ value: cal.uid, label: cal.name }))}
-          value={calendars.length ? { value: calendar.uid, label: calendar.name } : null}
+          options={calendars.map((cal) => ({
+            value: cal.uid,
+            label: cal.name,
+          }))}
+          value={
+            calendars.length
+              ? { value: calendar.uid, label: calendar.name }
+              : null
+          }
           onChange={(option) => {
             if (option) {
               setCalendar(calendars.find((c) => c.uid === option.value)!);

@@ -8,6 +8,8 @@ export interface Calendar {
   name: string;
   color: string;
   enabled: boolean;
+  type?: "caldav" | "ics"; // Add calendar type
+  useProxy?: boolean; // Add proxy flag
   raw?: DAVObject;
 }
 

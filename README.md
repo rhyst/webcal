@@ -65,5 +65,16 @@ Visit [http://localhost:8080](http://localhost:8080) in your browser.
 ## Limitations
 
 - No server-side component; all data is stored in the browser.
-- Only supports CalDAV servers that allow CORS requests from browsers.
 - No push notifications or background sync.
+
+## CORS Proxy
+
+WebCal includes a built-in CORS proxy for accessing remote calendar resources that do not send CORS headers. This proxy is available at the `/proxy` subpath of your deployed app.
+
+- To enable the proxy for a calendar, simply check the "Use Proxy" option when creating or editing a calendar in the modal.
+- When enabled, all requests for that calendar (CalDAV or ICS) will be routed through the proxy, allowing you to bypass CORS restrictions.
+- The proxy is served by the same Node.js server as the static app, so no additional setup is required.
+
+**Example:**
+- If your app is running at `https://yourdomain.com`, the proxy endpoint is `https://yourdomain.com/proxy/<remote-url>`.
+- The app will automatically use this endpoint for any calendar with the "Use Proxy" option enabled.

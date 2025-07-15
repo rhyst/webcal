@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
-export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
+export interface CheckboxProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   color?: string; // Tailwind color class, e.g. 'text-blue-700' or hex
   size?: number; // px
   label?: React.ReactNode;
@@ -8,20 +9,62 @@ export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputE
 
 const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
   (
-    { color = "blue-700", size = 20, className = "", checked, disabled, label, ...props },
-    ref
+    {
+      color = "blue-700",
+      size = 20,
+      className = "",
+      checked,
+      defaultChecked,
+      disabled,
+      label,
+      onChange,
+      ...props
+    },
+    ref,
   ) => {
     const styles = getComputedStyle(document.documentElement);
-    const actualColor = color.startsWith('#') ? color : styles.getPropertyValue("--color-" + color);
+    const actualColor = color.startsWith("#")
+      ? color
+      : styles.getPropertyValue("--color-" + color);
     const labelClass = `relative inline-flex items-center ${disabled ? "cursor-not-allowed" : "cursor-pointer"} ${className}`;
+    const isControlled = checked !== undefined;
+    const [internalChecked, setInternalChecked] = useState(
+      defaultChecked || false,
+    );
+
+    useEffect(() => {
+      if (isControlled) return;
+      setInternalChecked(defaultChecked || false);
+    }, [defaultChecked, isControlled]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!isControlled) setInternalChecked(e.target.checked);
+      if (onChange) onChange(e);
+    };
+
+    const isChecked = isControlled ? checked : internalChecked;
+
     return (
       <label className={labelClass}>
-        <span style={{ width: size, height: size, minWidth: size, minHeight: size, display: "inline-flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+        <span
+          style={{
+            width: size,
+            height: size,
+            minWidth: size,
+            minHeight: size,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+          }}
+        >
           <input
             type="checkbox"
             ref={ref}
-            checked={checked}
+            checked={isControlled ? checked : undefined}
+            defaultChecked={defaultChecked}
             disabled={disabled}
+            onChange={handleChange}
             {...props}
             className="peer appearance-none w-full h-full m-0 p-0 rounded border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-blue-300 transition-colors align-middle cursor-pointer"
             style={{ width: size, height: size }}
@@ -30,7 +73,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             className="pointer-events-none absolute w-full h-full top-0 left-0 rounded flex items-center justify-center border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-900 transition-colors peer-checked:border-transparent align-middle"
             style={{ width: size, height: size }}
           >
-            {checked && (
+            {isChecked && (
               <svg
                 width={size}
                 height={size}
@@ -50,12 +93,16 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             )}
           </span>
         </span>
-        {label && <span className="ml-2 select-none align-middle flex items-center text-neutral-900 text-sm dark:text-neutral-100">{label}</span>}
+        {label && (
+          <span className="ml-2 select-none align-middle flex items-center text-neutral-900 text-sm dark:text-neutral-100">
+            {label}
+          </span>
+        )}
       </label>
     );
-  }
+  },
 );
 
 Checkbox.displayName = "Checkbox";
 
-export default Checkbox; 
+export default Checkbox;

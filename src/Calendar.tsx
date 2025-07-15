@@ -4,6 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
+import iCalendarPlugin from "@fullcalendar/icalendar";
 import {
   createCalendarObject,
   deleteCalendarObject,
@@ -17,9 +18,10 @@ import type {
   EventClickArg,
   DatesSetArg,
 } from "@fullcalendar/core";
-import ICAL from "ical.js";
+import ICAL from "ical.js.2";
 import EventModal from "./EventModal";
 import type { Calendar as ICalendar, CalendarEvent } from "./types";
+import { proxyUrl } from "./utils";
 
 interface CalendarProps {
   className?: string;
@@ -56,12 +58,13 @@ async function fetchAllEvents({
   try {
     const allEvents: CalendarEvent[] = [];
     for (const cal of calendars) {
+      const url = cal.useProxy ? proxyUrl(cal.url) : cal.url;
       const auth = getBasicAuthHeaders({
         username: cal.username,
         password: cal.password,
       });
       const objects: DAVObject[] = await fetchCalendarObjects({
-        calendar: { url: cal.url },
+        calendar: { url },
         timeRange: { start: dateRange.start, end: dateRange.end },
         headers: auth,
       });
@@ -114,8 +117,12 @@ const Calendar: React.FC<CalendarProps> = ({
 
   useEffect(() => {
     const enabledCalendars = calendars.filter((cal) => cal.enabled !== false);
+    // Only fetch events for CalDAV calendars
+    const caldavCalendars = enabledCalendars.filter(
+      (cal) => !cal.type || cal.type === "caldav",
+    );
     fetchAllEvents({
-      calendars: enabledCalendars,
+      calendars: caldavCalendars,
       dateRange,
       setEvents,
       setError,
@@ -264,6 +271,7 @@ const Calendar: React.FC<CalendarProps> = ({
             timeGridPlugin,
             listPlugin,
             interactionPlugin,
+            iCalendarPlugin,
           ]}
           initialView="dayGridMonth"
           headerToolbar={{
@@ -271,19 +279,37 @@ const Calendar: React.FC<CalendarProps> = ({
             center: "title",
             right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
           }}
-          events={events.map((event) => {
-            const calendar = calendars.find((c) => c.uid === event.calendarUid);
-            return {
-              title: event.title,
-              start: event.startISO,
-              end: event.endISO,
-              backgroundColor: calendar?.color,
-              borderColor: calendar?.color,
-              extendedProps: {
-                uid: event.uid,
-              },
-            };
-          })}
+          eventSources={[
+            // ICS Events
+            ...calendars
+              .filter((cal) => cal.enabled !== false && cal.type === "ics")
+              .map((cal) => ({
+                url: cal.useProxy ? proxyUrl(cal.url) : cal.url,
+                format: "ics",
+                color: cal.color,
+                id: cal.uid,
+                display: "block",
+                // Optionally, you can add extra params here
+              })),
+            // Caldav events
+            {
+              events: events.map((event) => {
+                const calendar = calendars.find(
+                  (c) => c.uid === event.calendarUid,
+                );
+                return {
+                  title: event.title,
+                  start: event.startISO,
+                  end: event.endISO,
+                  backgroundColor: calendar?.color,
+                  borderColor: calendar?.color,
+                  extendedProps: {
+                    uid: event.uid,
+                  },
+                };
+              }),
+            },
+          ]}
           editable={true}
           selectable={true}
           height="100%"

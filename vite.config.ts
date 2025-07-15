@@ -11,4 +11,7 @@ export default defineConfig({
       "cross-fetch": path.resolve("./src/shim.ts"),
     },
   },
+  build: {
+    sourcemap: true,
+  },
 });

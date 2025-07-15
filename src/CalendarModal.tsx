@@ -5,6 +5,7 @@ import Modal from "react-modal";
 import type { Calendar } from "./types";
 import Input from "./Input";
 import Checkbox from "./Checkbox";
+import Radio from "./Radio";
 
 const COLORS = [
   "#4285F4", // Blue
@@ -42,6 +43,12 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
   const [username, setUserName] = useState(calendar?.username || "");
   const [password, setPassword] = useState(calendar?.password || "");
   const [enabled, setEnabled] = useState<boolean>(calendar?.enabled || true);
+  const [type, setType] = useState<"caldav" | "ics">(
+    calendar?.type || "caldav",
+  );
+  const [useProxy, setUseProxy] = useState<boolean>(
+    calendar?.useProxy || false,
+  );
 
   const handleSave = () => {
     onSave({
@@ -50,9 +57,11 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
       name,
       color,
       url,
-      username,
-      password,
+      username: type === "caldav" ? username : "",
+      password: type === "caldav" ? password : "",
       enabled,
+      type,
+      useProxy,
     });
   };
 
@@ -75,6 +84,31 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
       </Text>
       <div>
         <Text as="label" size="sm" weight="medium" color="gray">
+          Type:
+        </Text>
+        <div className="flex gap-4 mt-1 mb-2">
+          <Radio
+            name="calendar-type"
+            checked={type === "caldav"}
+            onChange={() => setType("caldav")}
+            label="CalDAV"
+            color="#2b6cb0"
+            size={18}
+            disabled={isEdit}
+          />
+          <Radio
+            name="calendar-type"
+            checked={type === "ics"}
+            onChange={() => setType("ics")}
+            label="ICS (.ics file/url)"
+            color="#2b6cb0"
+            size={18}
+            disabled={isEdit}
+          />
+        </div>
+      </div>
+      <div>
+        <Text as="label" size="sm" weight="medium" color="gray">
           Name:
         </Text>
         <Input
@@ -92,7 +126,7 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
             <button
               key={c}
               type="button"
-              className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition ${color === c ? "border-blue-700 ring-2 ring-blue-200" : "border-[#eee]"}`}
+              className={`cursor-pointer w-7 h-7 rounded-full border-2 flex items-center justify-center transition ${color === c ? "border-blue-700 ring-2 ring-blue-200" : "border-[#eee]"}`}
               style={{ background: c }}
               aria-label={c}
               onClick={() => setColor(c)}
@@ -124,34 +158,49 @@ const EditCalendarModal: React.FC<EditCalendarModalProps> = ({
           className="text-[#888] disabled:bg-[#f3f3f3] disabled:cursor-not-allowed"
         />
       </div>
-      <div>
-        <Text as="label" size="sm" weight="medium" color="gray">
-          Username:
-        </Text>
-        <Input
-          type="text"
-          value={username}
-          onChange={(e) => setUserName(e.target.value)}
+      {type === "caldav" && (
+        <>
+          <div>
+            <Text as="label" size="sm" weight="medium" color="gray">
+              Username:
+            </Text>
+            <Input
+              type="text"
+              value={username}
+              onChange={(e) => setUserName(e.target.value)}
+            />
+          </div>
+          <div>
+            <Text as="label" size="sm" weight="medium" color="gray">
+              Password:
+            </Text>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+        </>
+      )}
+      <div className="flex gap-4">
+        <Checkbox
+          checked={enabled}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setEnabled(e.target.checked)
+          }
+          className="mr-1.5"
+          size={20}
+          label="Enabled"
         />
-      </div>
-      <div>
-        <Text as="label" size="sm" weight="medium" color="gray">
-          Password:
-        </Text>
-        <Input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+        <Checkbox
+          checked={useProxy}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setUseProxy(e.target.checked)
+          }
+          className="mr-1.5"
+          size={20}
+          label="Use Proxy"
         />
-      </div>
-      <div>
-          <Checkbox
-            checked={enabled !== false}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEnabled(e.target.checked)}
-            className="mr-1.5"
-            size={20}
-            label="Enabled"
-          />
       </div>
       <div className="mt-2 flex gap-2 justify-end">
         <Button type="submit" variant="primary" onClick={handleSave}>
