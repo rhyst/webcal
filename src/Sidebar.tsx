@@ -7,171 +7,213 @@ interface SidebarProps {
   calendars: Calendar[];
   loading?: boolean;
   isDark?: boolean;
+  width?: number;
   onClickRemove: (uid: string) => void;
   onClickAdd: (v: boolean) => void;
   onClickCalendar: (uid: string) => void;
   onClickImport?: (calendars: Calendar[]) => void;
   onClickDarkMode?: (dark: boolean) => void;
+  onWidthChange?: (width: number) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   calendars,
-  isDark = false,
   loading = false,
+  isDark = false,
+  width,
   onClickRemove,
   onClickAdd,
   onClickCalendar,
   onClickImport,
   onClickDarkMode,
-}) => (
-  <div className="w-[320px] h-screen border-r border-[#e0e0e0] dark:border-gray-700 flex flex-col gap-4 p-2">
-    <div className="flex items-center justify-between gap-2">
-      <Text
-        as="h1"
-        size="lg"
-        weight="semibold"
-        color="blue"
-        className="m-0 p-0"
-      >
-        WebCal
-      </Text>
-      <div className="flex items-center gap-2">
-        {loading && (
-          <svg
-            className="animate-spin h-5 w-5 text-blue-600"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-            />
-          </svg>
-        )}
-      </div>
-    </div>
-    <div className="flex flex-col gap-2">
-      <Button
-        onClick={() => onClickAdd(true)}
-        className="w-full"
-        variant="primary"
-      >
-        Add Calendar
-      </Button>
-      <div className="flex gap-2">
-        <Button
-          onClick={() => {
-            const dataStr =
-              "data:text/json;charset=utf-8," +
-              encodeURIComponent(JSON.stringify(calendars, null, 2));
-            const downloadAnchorNode = document.createElement("a");
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute(
-              "download",
-              "caldav_calendars.json",
-            );
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-          }}
-          className="w-full"
-          variant="secondary"
-        >
-          Export
-        </Button>
-        <Button
-          onClick={() => {
-            document.getElementById("import-calendars-input")?.click();
-          }}
-          className="w-full"
-          variant="secondary"
-        >
-          Import
-        </Button>
-      </div>
-    </div>
-    <input
-      id="import-calendars-input"
-      type="file"
-      accept="application/json"
-      style={{ display: "none" }}
-      onChange={async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const text = await file.text();
-        try {
-          const parsed = JSON.parse(text);
-          if (Array.isArray(parsed)) {
-            if (typeof onClickImport === "function") onClickImport(parsed);
-          } else {
-            alert("Invalid file format: expected an array");
-          }
-        } catch (err) {
-          alert("Failed to parse JSON: " + err);
-        }
-        e.target.value = "";
-      }}
-    />
-    <div className="flex-1 overflow-y-auto pt-0">
-      <ul className="flex flex-col gap-1 list-none p-0 m-0">
-        {calendars.map((cal) => (
-          <li
-            key={cal.uid}
-            className={`flex items-center group${cal.enabled === false ? " opacity-40" : ""}`}
-          >
-            <div
-              className="flex items-center flex-1 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-700 rounded px-1 py-0.5"
-              onClick={() => onClickCalendar(cal.uid)}
-            >
-              <span
-                className="inline-block w-3.5 h-3.5 rounded-full mr-2.5 border border-[#bbb]"
-                style={{ background: cal.color || "#1976d2" }}
-              />
-              <Text
-                as="span"
-                size="base"
-                weight="medium"
-                color="gray"
-                className="break-all flex-1"
-              >
-                {cal.name}
-              </Text>
-            </div>
-            <Button
-              className="ml-2 px-2 py-0.5 text-xs"
-              variant="secondary"
-              onClick={() => {
-                onClickRemove(cal.uid);
-              }}
-              title="Remove"
-              type="button"
-            >
-              ✕
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </div>
-    <Button
-      className="w-fit"
-      variant="secondary"
-      onClick={() => onClickDarkMode?.(!isDark)}
-      title="Toggle dark mode"
-      type="button"
+  onWidthChange,
+  ...props
+}) => {
+  // Drag logic
+  const handleRef = React.useRef<HTMLDivElement>(null);
+  const dragging = React.useRef(false);
+
+  React.useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragging.current || !onWidthChange) return;
+      const newWidth = Math.min(600, Math.max(200, e.clientX));
+      onWidthChange(newWidth);
+    };
+    const onMouseUp = () => {
+      dragging.current = false;
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [onWidthChange]);
+
+  return (
+    <div
+      className="h-screen border-r border-[#e0e0e0] dark:border-gray-700 flex flex-col gap-4 p-2 relative bg-white dark:bg-gray-900"
+      style={{ width, minWidth: 200, maxWidth: 600 }}
+      {...props}
     >
-      {isDark ? "🌙 Dark" : "☀️ Light"}
-    </Button>
-  </div>
-);
+      <div className="flex items-center justify-between gap-2">
+        <Text
+          as="h1"
+          size="lg"
+          weight="semibold"
+          color="blue"
+          className="m-0 p-0"
+        >
+          WebCal
+        </Text>
+        <div className="flex items-center gap-2">
+          {loading && (
+            <svg
+              className="animate-spin h-5 w-5 text-blue-600"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+              />
+            </svg>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Button
+          onClick={() => onClickAdd(true)}
+          className="w-full"
+          variant="primary"
+        >
+          Add Calendar
+        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => {
+              const dataStr =
+                "data:text/json;charset=utf-8," +
+                encodeURIComponent(JSON.stringify(calendars, null, 2));
+              const downloadAnchorNode = document.createElement("a");
+              downloadAnchorNode.setAttribute("href", dataStr);
+              downloadAnchorNode.setAttribute(
+                "download",
+                "caldav_calendars.json",
+              );
+              document.body.appendChild(downloadAnchorNode);
+              downloadAnchorNode.click();
+              downloadAnchorNode.remove();
+            }}
+            className="w-full"
+            variant="secondary"
+          >
+            Export
+          </Button>
+          <Button
+            onClick={() => {
+              document.getElementById("import-calendars-input")?.click();
+            }}
+            className="w-full"
+            variant="secondary"
+          >
+            Import
+          </Button>
+        </div>
+      </div>
+      <input
+        id="import-calendars-input"
+        type="file"
+        accept="application/json"
+        style={{ display: "none" }}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const text = await file.text();
+          try {
+            const parsed = JSON.parse(text);
+            if (Array.isArray(parsed)) {
+              if (typeof onClickImport === "function") onClickImport(parsed);
+            } else {
+              alert("Invalid file format: expected an array");
+            }
+          } catch (err) {
+            alert("Failed to parse JSON: " + err);
+          }
+          e.target.value = "";
+        }}
+      />
+      <div className="flex-1 overflow-y-auto pt-0">
+        <ul className="flex flex-col gap-1 list-none p-0 m-0">
+          {calendars.map((cal) => (
+            <li
+              key={cal.uid}
+              className={`flex items-center group${cal.enabled === false ? " opacity-40" : ""}`}
+            >
+              <div
+                className="flex items-center flex-1 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-700 rounded px-1 py-0.5"
+                onClick={() => onClickCalendar(cal.uid)}
+              >
+                <span
+                  className="inline-block w-3.5 h-3.5 rounded-full mr-2.5 border border-[#bbb]"
+                  style={{ background: cal.color || "#1976d2" }}
+                />
+                <Text
+                  as="span"
+                  size="base"
+                  weight="medium"
+                  color="gray"
+                  className="break-all flex-1"
+                >
+                  {cal.name}
+                </Text>
+              </div>
+              <Button
+                className="ml-2 px-2 py-0.5 text-xs"
+                variant="secondary"
+                onClick={() => {
+                  onClickRemove(cal.uid);
+                }}
+                title="Remove"
+                type="button"
+              >
+                ✕
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <Button
+        className="w-fit"
+        variant="secondary"
+        onClick={() => onClickDarkMode?.(!isDark)}
+        title="Toggle dark mode"
+        type="button"
+      >
+        {isDark ? "🌙 Dark" : "☀️ Light"}
+      </Button>
+      <div
+        ref={handleRef}
+        className="absolute top-0 right-0 h-full w-2 cursor-col-resize z-50 bg-transparent hover:bg-blue-200 dark:hover:bg-blue-900 transition"
+        onMouseDown={() => {
+          dragging.current = true;
+          document.body.style.userSelect = "none";
+        }}
+        style={{ userSelect: "none" }}
+      />
+    </div>
+  );
+};
 
 export default Sidebar;

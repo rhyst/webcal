@@ -10,6 +10,7 @@ interface CalendarModalState {
   calendar?: ICalendar;
 }
 
+
 function App() {
   const [calendars, setCalendars] = useState<ICalendar[]>([]);
   const [modal, setModal] = useState<CalendarModalState>({
@@ -23,7 +24,12 @@ function App() {
     if (stored !== null) return stored === "true";
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const stored = localStorage.getItem("sidebar_width");
+    return stored ? parseInt(stored, 10) : 320;
+  });
 
+  // Persist Darkmode
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -32,6 +38,11 @@ function App() {
     }
     localStorage.setItem("dark_mode", String(darkMode));
   }, [darkMode]);
+
+  // Persist sidebarwidth
+  useEffect(() => {
+    localStorage.setItem("sidebar_width", String(sidebarWidth));
+  }, [sidebarWidth]);
 
   // Load calendars from localStorage on mount
   useEffect(() => {
@@ -75,11 +86,13 @@ function App() {
         calendars={calendars}
         loading={loading}
         isDark={darkMode}
+        width={sidebarWidth}
         onClickRemove={handleRemove}
         onClickAdd={() => setModal({ open: true, isEdit: false })}
         onClickCalendar={handleEditCalendar}
         onClickImport={(imported) => setCalendars(imported)}
         onClickDarkMode={(dark) => setDarkMode(dark)}
+        onWidthChange={setSidebarWidth}
       />
       <Calendar
         className="flex flex-1 h-screen"
